@@ -4,6 +4,9 @@ import html
 import os
 import shutil
 import re
+import base64
+import unicodedata
+from urllib.parse import quote
 from datetime import datetime, timezone
 
 
@@ -1294,6 +1297,98 @@ h2 { margin: 10px 0 16px; }
 
 
 /* =========================================================
+   APERÇU DES LIENS PARTAGÉS - ADMIN TUTORIELS
+   ========================================================= */
+.tutorial-share-settings {
+    margin: 14px 0 18px;
+    padding: 15px;
+    border: 1px solid rgba(255,210,130,.18);
+    border-radius: 14px;
+    background: rgba(12,14,20,.46);
+}
+.tutorial-share-settings-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 7px 12px;
+    margin-bottom: 12px;
+}
+.tutorial-share-settings-head strong { color: #ffd493; }
+.tutorial-share-settings-head span {
+    color: #aeb5c0;
+    font-size: 12px;
+    line-height: 1.45;
+}
+.tutorial-share-field {
+    display: grid;
+    gap: 6px;
+    margin-top: 10px;
+    color: #d8dce3;
+    font-size: 13px;
+    font-weight: 700;
+}
+.tutorial-share-field input,
+.tutorial-share-field textarea {
+    width: 100%;
+    border: 1px solid rgba(255,255,255,.14);
+    border-radius: 9px;
+    background: rgba(0,0,0,.24);
+    color: white;
+    padding: 10px 11px;
+    font: inherit;
+    font-weight: 400;
+    outline: none;
+}
+.tutorial-share-field textarea {
+    min-height: 78px;
+    resize: vertical;
+    line-height: 1.45;
+}
+.tutorial-share-field input:focus,
+.tutorial-share-field textarea:focus {
+    border-color: rgba(240,180,92,.65);
+    box-shadow: 0 0 0 2px rgba(240,180,92,.10);
+}
+.tutorial-share-image-row {
+    margin-top: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+.tutorial-share-image-preview {
+    width: 150px;
+    max-width: 42vw;
+    aspect-ratio: 1.91 / 1;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,.14);
+    background: rgba(0,0,0,.25);
+}
+.tutorial-share-image-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.tutorial-share-image-actions button {
+    border: 1px solid rgba(255,255,255,.14);
+    border-radius: 9px;
+    background: rgba(255,255,255,.055);
+    color: white;
+    padding: 9px 11px;
+    font-weight: 700;
+}
+.tutorial-share-image-actions button:hover { background: rgba(255,255,255,.10); }
+.tutorial-share-image-actions .danger { color: #ffb1b1; }
+.tutorial-share-auto-note {
+    margin-top: 8px;
+    color: #9fa6b1;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+
+/* =========================================================
    PAGE 404
    ========================================================= */
 .error-page {
@@ -1511,6 +1606,7 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
     const REPO_BRANCH = "main";
     const DATA_PATH = "tutoriels-data.json";
     const API_URL = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_PATH}`;
+    const SHARE_BASE_URL = "https://legodingo13.github.io/site-internet-legodingo13/t/";
 
     const builtinEmojis = ["😀","😄","😂","❤️","👍","🎉","🔥","👑","🏰","⚔️","💬","📢","✅","❗","❓","🎯","🛠️","📷","🎬","🌟"];
 
@@ -1584,6 +1680,9 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
             if (typeof menu.title !== "string") menu.title = "";
             if (typeof menu.slug !== "string") menu.slug = "";
             if (typeof menu.updatedAt !== "string") menu.updatedAt = "";
+            if (typeof menu.shareTitle !== "string") menu.shareTitle = "";
+            if (typeof menu.shareDescription !== "string") menu.shareDescription = "";
+            if (typeof menu.shareImage !== "string" || !menu.shareImage.startsWith("data:image/")) menu.shareImage = "";
             if (!Array.isArray(menu.blocks)) menu.blocks = [];
             menu.blocks.forEach(block => {
                 if (!block.id) block.id = uid("block");
@@ -1909,10 +2008,11 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
             const isOpen = menu.id === openMenuId;
             const blocks = menu.blocks.map(renderPublicBlock).join("");
             const anchor = menuAnchor(menu);
+            const shareUrl = SHARE_BASE_URL + encodeURIComponent(anchor) + ".html";
             const updatedLabel = formatTutorialDate(menu.updatedAt);
             const updatedHtml = updatedLabel ? `<div class="tutorial-menu-updated">Dernière mise à jour : ${escapeHtml(updatedLabel)}</div>` : "";
             return `<section id="${escapeHtml(anchor)}" class="tutorial-menu${isOpen ? " open" : ""}" data-menu-id="${escapeHtml(menu.id)}">
-                <a class="tutorial-anchor-link" href="#${escapeHtml(anchor)}" title="Copier le lien direct de ce tutoriel" aria-label="Copier le lien direct de ${escapeHtml(menu.title)}">🔗</a>
+                <a class="tutorial-anchor-link" href="${escapeHtml(shareUrl)}" title="Copier le lien de partage de ce tutoriel" aria-label="Copier le lien de partage de ${escapeHtml(menu.title)}">🔗</a>
                 <button type="button" class="tutorial-menu-header" data-action="toggle-menu" data-menu-id="${escapeHtml(menu.id)}" aria-expanded="${isOpen ? "true" : "false"}">
                     <span>${escapeHtml(menu.title)}</span><span class="tutorial-menu-arrow">›</span>
                 </button>
@@ -2020,6 +2120,31 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
                 <div class="tutorial-menu-panel">
                     ${formatTutorialDate(menu.updatedAt) ? `<div class="tutorial-menu-updated">Dernière mise à jour : ${escapeHtml(formatTutorialDate(menu.updatedAt))}</div>` : ""}
                     <input class="tutorial-title-input" type="text" maxlength="140" placeholder="Titre du menu déroulant" value="${escapeHtml(menu.title)}" data-action="menu-title" data-menu-id="${menu.id}">
+                    <div class="tutorial-share-settings">
+                        <div class="tutorial-share-settings-head">
+                            <strong>Aperçu du lien partagé</strong>
+                            <span>Facultatif : si tu laisses un champ vide, le site crée automatiquement l’aperçu à partir du tutoriel.</span>
+                        </div>
+                        <label class="tutorial-share-field">
+                            <span>Titre de l’aperçu Discord</span>
+                            <input type="text" maxlength="140" placeholder="Automatique : ${escapeHtml(menu.title || "titre du tutoriel")}" value="${escapeHtml(menu.shareTitle || "")}" data-action="share-title" data-menu-id="${menu.id}">
+                        </label>
+                        <label class="tutorial-share-field">
+                            <span>Description de l’aperçu Discord</span>
+                            <textarea maxlength="300" placeholder="Automatique : le début du premier texte du tutoriel" data-action="share-description" data-menu-id="${menu.id}">${escapeHtml(menu.shareDescription || "")}</textarea>
+                        </label>
+                        <div class="tutorial-share-image-row">
+                            ${menu.shareImage ? `<img class="tutorial-share-image-preview" src="${escapeHtml(menu.shareImage)}" alt="Image d’aperçu personnalisée">` : ""}
+                            <div>
+                                <div class="tutorial-share-image-actions">
+                                    <button type="button" data-action="choose-share-image" data-menu-id="${menu.id}">${menu.shareImage ? "Changer l’image d’aperçu" : "Choisir une image d’aperçu"}</button>
+                                    ${menu.shareImage ? `<button type="button" class="danger" data-action="remove-share-image" data-menu-id="${menu.id}">Retirer l’image personnalisée</button>` : ""}
+                                </div>
+                                <div class="tutorial-share-auto-note">Sans image personnalisée, la première image du tutoriel est utilisée automatiquement. S’il n’y en a aucune, le logo Legodingo13 est utilisé.</div>
+                                <input type="file" accept="image/*" data-share-image-input="${menu.id}" hidden>
+                            </div>
+                        </div>
+                    </div>
                     <div class="tutorial-add-blocks">
                         <button type="button" data-action="add-text" data-menu-id="${menu.id}">Texte</button>
                         <button type="button" data-action="add-image" data-menu-id="${menu.id}">Image</button>
@@ -2100,10 +2225,9 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
                 const section = link.closest(".tutorial-menu");
                 if (!section) return;
                 const anchor = section.id;
-                const directUrl = new URL(window.location.href);
-                directUrl.hash = anchor;
+                const directUrl = link.href || (SHARE_BASE_URL + encodeURIComponent(anchor) + ".html");
 
-                const copied = await copyTextToClipboard(directUrl.href);
+                const copied = await copyTextToClipboard(directUrl);
                 showCopyToast(copied ? "Lien du tutoriel copié dans le presse-papiers." : "Impossible de copier automatiquement le lien.");
 
                 openMenuId = section.dataset.menuId || null;
@@ -2284,6 +2408,62 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
                 if (menu) menu.title = input.value;
                 const header = input.closest(".tutorial-menu").querySelector(".tutorial-menu-header span:first-child");
                 if (header) header.textContent = input.value || "Menu sans titre";
+                markDirty();
+            });
+        });
+
+        accordion.querySelectorAll('[data-action="share-title"]').forEach(input => {
+            input.addEventListener("input", () => {
+                const menu = findMenu(input.dataset.menuId);
+                if (!menu) return;
+                menu.shareTitle = input.value;
+                markDirty();
+            });
+        });
+
+        accordion.querySelectorAll('[data-action="share-description"]').forEach(input => {
+            input.addEventListener("input", () => {
+                const menu = findMenu(input.dataset.menuId);
+                if (!menu) return;
+                menu.shareDescription = input.value;
+                markDirty();
+            });
+        });
+
+        accordion.querySelectorAll('[data-action="choose-share-image"]').forEach(button => {
+            button.addEventListener("click", () => {
+                const input = accordion.querySelector(`[data-share-image-input="${CSS.escape(button.dataset.menuId)}"]`);
+                if (input) input.click();
+            });
+        });
+
+        accordion.querySelectorAll('[data-share-image-input]').forEach(input => {
+            input.addEventListener("change", async () => {
+                const file = input.files && input.files[0];
+                if (!file) return;
+                const menu = findMenu(input.dataset.shareImageInput);
+                if (!menu) return;
+                try {
+                    setStatus("Préparation de l’image d’aperçu…", "");
+                    menu.shareImage = await compressImage(file, 1200, 630, .84, 500 * 1024);
+                    openMenuId = menu.id;
+                    renderAdmin();
+                    markDirty();
+                } catch (error) {
+                    console.error(error);
+                    setStatus("Impossible de préparer l’image d’aperçu.", "error");
+                }
+                input.value = "";
+            });
+        });
+
+        accordion.querySelectorAll('[data-action="remove-share-image"]').forEach(button => {
+            button.addEventListener("click", () => {
+                const menu = findMenu(button.dataset.menuId);
+                if (!menu) return;
+                menu.shareImage = "";
+                openMenuId = menu.id;
+                renderAdmin();
                 markDirty();
             });
         });
@@ -2698,7 +2878,7 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
 
     function createMenuRequest() {
         openConfirm("Créer un menu déroulant", "Confirmer la création d'un nouveau menu déroulant ?", "Créer", () => {
-            const menu = { id: uid("menu"), title: "", blocks: [] };
+            const menu = { id: uid("menu"), title: "", slug: "", updatedAt: "", shareTitle: "", shareDescription: "", shareImage: "", blocks: [] };
             tutorialData.menus.push(menu);
             openMenuId = menu.id;
             closeConfirm();
@@ -3075,8 +3255,9 @@ def navigation(active):
     return "".join(parts)
 
 
-def shell(filename, active, title, description, body, robots="index, follow"):
+def shell(filename, active, title, description, body, robots="index, follow", og_image="logo.png", og_type="website"):
     canonical = SITE_BASE + ("" if filename == "index.html" else filename)
+    og_image_url = og_image if str(og_image).startswith(("http://", "https://")) else SITE_BASE + str(og_image).lstrip("/")
     view_path = (
         PAGEVIEWS_BASE_PATH + "/"
         if filename == "index.html"
@@ -3097,6 +3278,18 @@ def shell(filename, active, title, description, body, robots="index, follow"):
 <meta name="description" content="{html.escape(description, quote=True)}">
 <meta name="robots" content="{robots}">
 <link rel="canonical" href="{canonical}">
+<meta property="og:locale" content="fr_FR">
+<meta property="og:type" content="{html.escape(og_type, quote=True)}">
+<meta property="og:site_name" content="Legodingo13">
+<meta property="og:title" content="{html.escape(title, quote=True)}">
+<meta property="og:description" content="{html.escape(description, quote=True)}">
+<meta property="og:url" content="{html.escape(canonical, quote=True)}">
+<meta property="og:image" content="{html.escape(og_image_url, quote=True)}">
+<meta property="og:image:alt" content="{html.escape(title, quote=True)}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{html.escape(title, quote=True)}">
+<meta name="twitter:description" content="{html.escape(description, quote=True)}">
+<meta name="twitter:image" content="{html.escape(og_image_url, quote=True)}">
 {GOOGLE_META}
 <style>{CSS}</style>
 </head>
@@ -3146,6 +3339,210 @@ def shell(filename, active, title, description, body, robots="index, follow"):
 
     with open(os.path.join("_site", filename), "w", encoding="utf-8") as f:
         f.write(page)
+
+
+def tutorial_share_slug(menu):
+    """Reproduit la logique du lien direct utilisée dans le navigateur."""
+    slug = str((menu or {}).get("slug", "") or "").strip()
+    if slug:
+        return slug
+
+    title = str((menu or {}).get("title", "") or "")
+    normalized = unicodedata.normalize("NFD", title)
+    normalized = "".join(ch for ch in normalized if unicodedata.category(ch) != "Mn")
+    base = re.sub(r"[^a-z0-9]+", "-", normalized.lower()).strip("-")[:72] or "tutoriel"
+    menu_id = re.sub(r"[^A-Za-z0-9]", "", str((menu or {}).get("id", "menu")))
+    suffix = menu_id[-6:].lower()
+    return base + ("-" + suffix if suffix else "")
+
+
+def plain_text_from_tutorial_html(value):
+    text = str(value or "")
+    text = re.sub(
+        r'<img[^>]*\balt=["\']([^"\']*)["\'][^>]*>',
+        lambda match: " " + html.unescape(match.group(1)) + " ",
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = html.unescape(text)
+    text = re.sub(r"\(([^()\[\]\n]{1,200})\)\[(https?://[^\]\s]+)\]", r"\1", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def trim_share_description(value, limit=240):
+    value = re.sub(r"\s+", " ", str(value or "")).strip()
+    if len(value) <= limit:
+        return value
+    shortened = value[: limit - 1].rsplit(" ", 1)[0].rstrip(" ,;:-")
+    return (shortened or value[: limit - 1]).rstrip() + "…"
+
+
+def automatic_tutorial_description(menu):
+    manual = str((menu or {}).get("shareDescription", "") or "").strip()
+    if manual:
+        return trim_share_description(manual)
+
+    for block in (menu or {}).get("blocks", []) or []:
+        if isinstance(block, dict) and block.get("type") == "text":
+            text = plain_text_from_tutorial_html(block.get("html", ""))
+            if text:
+                return trim_share_description(text)
+
+    title = str((menu or {}).get("title", "") or "Tutoriel Forge of Empires").strip()
+    return trim_share_description(f"Tutoriel Forge of Empires publié par Legodingo13 : {title}.")
+
+
+def automatic_tutorial_image_data(menu):
+    manual = str((menu or {}).get("shareImage", "") or "")
+    if manual.startswith("data:image/"):
+        return manual
+
+    for block in (menu or {}).get("blocks", []) or []:
+        if not isinstance(block, dict) or block.get("type") != "image":
+            continue
+        images = block.get("images")
+        if isinstance(images, list):
+            for image in images:
+                if isinstance(image, dict):
+                    data = str(image.get("data", "") or "")
+                    if data.startswith("data:image/"):
+                        return data
+        legacy = str(block.get("data", "") or "")
+        if legacy.startswith("data:image/"):
+            return legacy
+    return ""
+
+
+def export_data_image(data_url, slug):
+    match = re.match(r"^data:(image/[A-Za-z0-9.+-]+);base64,(.+)$", str(data_url or ""), flags=re.DOTALL)
+    if not match:
+        return None
+
+    mime = match.group(1).lower()
+    extension = {
+        "image/webp": "webp",
+        "image/png": "png",
+        "image/jpeg": "jpg",
+        "image/jpg": "jpg",
+        "image/gif": "gif",
+    }.get(mime)
+    if not extension:
+        return None
+
+    try:
+        binary = base64.b64decode(match.group(2), validate=False)
+    except Exception:
+        return None
+    if not binary:
+        return None
+
+    safe_slug = re.sub(r"[^A-Za-z0-9._-]+", "-", slug).strip("-.") or "tutoriel"
+    os.makedirs(os.path.join("_site", "previews"), exist_ok=True)
+    relative = f"previews/{safe_slug}.{extension}"
+    with open(os.path.join("_site", relative), "wb") as file:
+        file.write(binary)
+    return relative
+
+
+def generate_tutorial_share_pages():
+    """Crée une URL partageable /t/<slug>.html par tutoriel avec Open Graph."""
+    data_path = "tutoriels-data.json"
+    if not os.path.exists(data_path):
+        print("ATTENTION : tutoriels-data.json absent, aucune page de partage de tutoriel générée.")
+        return []
+
+    try:
+        with open(data_path, "r", encoding="utf-8") as file:
+            data = json.load(file)
+    except Exception as error:
+        print("ATTENTION : impossible de lire tutoriels-data.json pour les aperçus de partage :", error)
+        return []
+
+    menus = data.get("menus", []) if isinstance(data, dict) else []
+    if not isinstance(menus, list):
+        return []
+
+    os.makedirs(os.path.join("_site", "t"), exist_ok=True)
+    generated = []
+    used_paths = set()
+
+    for menu in menus:
+        if not isinstance(menu, dict):
+            continue
+        title = str(menu.get("shareTitle", "") or "").strip() or str(menu.get("title", "") or "").strip()
+        if not title:
+            continue
+
+        slug = tutorial_share_slug(menu)
+        filename_slug = slug
+        suffix_index = 2
+        while filename_slug in used_paths:
+            filename_slug = f"{slug}-{suffix_index}"
+            suffix_index += 1
+        used_paths.add(filename_slug)
+
+        description = automatic_tutorial_description(menu)
+        target_anchor = quote(slug, safe="-._~")
+        target_url = SITE_BASE + "tutoriels.html#" + target_anchor
+        share_url = SITE_BASE + "t/" + quote(filename_slug, safe="-._~") + ".html"
+
+        image_data = automatic_tutorial_image_data(menu)
+        image_relative = export_data_image(image_data, filename_slug) if image_data else None
+        image_url = SITE_BASE + image_relative if image_relative else SITE_BASE + "logo.png"
+
+        escaped_title = html.escape(title, quote=True)
+        escaped_description = html.escape(description, quote=True)
+        escaped_target = html.escape(target_url, quote=True)
+        escaped_share = html.escape(share_url, quote=True)
+        escaped_image = html.escape(image_url, quote=True)
+        redirect_js = json.dumps(target_url, ensure_ascii=False)
+
+        share_page = f'''<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{escaped_title} - Legodingo13</title>
+<meta name="description" content="{escaped_description}">
+<meta name="robots" content="noindex, follow">
+<link rel="canonical" href="{escaped_target}">
+<meta property="og:locale" content="fr_FR">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Legodingo13">
+<meta property="og:title" content="{escaped_title}">
+<meta property="og:description" content="{escaped_description}">
+<meta property="og:url" content="{escaped_share}">
+<meta property="og:image" content="{escaped_image}">
+<meta property="og:image:alt" content="{escaped_title}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{escaped_title}">
+<meta name="twitter:description" content="{escaped_description}">
+<meta name="twitter:image" content="{escaped_image}">
+<meta http-equiv="refresh" content="0; url={escaped_target}">
+<link rel="icon" type="image/x-icon" href="../favicon.ico?v=4">
+<style>
+body{{margin:0;padding:40px 20px;background:#111722;color:#fff;font-family:Arial,Helvetica,sans-serif;text-align:center}}
+main{{max-width:720px;margin:60px auto;padding:28px;border:1px solid rgba(255,210,130,.25);border-radius:20px;background:#1a1d27}}
+a{{color:#ffd493}}
+</style>
+</head>
+<body>
+<main>
+<h1>{escaped_title}</h1>
+<p>{escaped_description}</p>
+<p>Ouverture du tutoriel…</p>
+<p><a href="{escaped_target}">Ouvrir le tutoriel</a></p>
+</main>
+<script>window.location.replace({redirect_js});</script>
+</body>
+</html>'''
+
+        with open(os.path.join("_site", "t", filename_slug + ".html"), "w", encoding="utf-8") as file:
+            file.write(share_page)
+        generated.append(filename_slug)
+
+    return generated
 
 
 if os.path.exists("_site"):
@@ -3337,6 +3734,7 @@ shell(
     f"Serveur Discord Legodingo13 - {member_count} membres",
     f"Le serveur Discord de Legodingo13 compte actuellement environ {member_count} membres, dont {online_count} membres en ligne.",
     discord_body,
+    og_image="discord_presentation_1.png",
 )
 
 
@@ -3472,7 +3870,12 @@ shell(
     "Tutoriels de jeu - Legodingo13",
     "Tutoriels et guides de jeu publiés par Legodingo13.",
     tutoriels_body,
+    og_image="tutoriels_logo.png",
 )
+
+# Une page Open Graph dédiée est générée pour chaque tutoriel afin que Discord
+# puisse afficher le bon titre, la bonne description et la bonne image.
+tutorial_share_pages = generate_tutorial_share_pages()
 
 
 # PROFIL = TABLEAU EXCEL
@@ -3507,6 +3910,7 @@ shell(
     "Profil Legodingo13 - Tableau Excel des mondes FOE",
     "Profil Legodingo13 : dernière version du tableau Excel des mondes Forge of Empires.",
     profil_body,
+    og_image="profil_tableau.png",
 )
 
 
@@ -3518,6 +3922,7 @@ shell(
     "Profil Legodingo13 - Tableau Excel des mondes FOE",
     "Profil Legodingo13 : dernière version du tableau Excel des mondes Forge of Empires.",
     profil_body,
+    og_image="profil_tableau.png",
 )
 
 
@@ -3545,6 +3950,7 @@ shell(
     "La page demandée est introuvable sur le site Legodingo13.",
     error_404_body,
     robots="noindex, follow",
+    og_image="erreur404_roi.png",
 )
 
 
@@ -3634,3 +4040,4 @@ with open("last-update.txt", "w", encoding="utf-8") as f:
 print(f"Discord : {member_count} membres / {online_count} en ligne")
 print(f"YouTube via SocialCounts : {youtube_subscribers} abonnés")
 print("Pages générées : Accueil, Discord, YouTube, Profil Legodingo13, Tutoriels de jeu, compatibilité tableau.html")
+print(f"Pages de partage Open Graph générées : {len(tutorial_share_pages)}")
