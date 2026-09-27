@@ -631,6 +631,17 @@ h2 { margin: 10px 0 16px; }
     box-shadow: 0 12px 30px rgba(0,0,0,.28);
 }
 
+.tutorial-single-image { text-align: center; }
+.tutorial-image-figure { margin: 0; min-width: 0; }
+.tutorial-image-caption {
+    margin-top: 8px;
+    color: #d9dde5;
+    font-size: 14px;
+    line-height: 1.4;
+    text-align: center;
+    overflow-wrap: anywhere;
+}
+
 /* Parties Image : galerie côte à côte */
 .tutorial-image-grid {
     display: grid;
@@ -647,6 +658,9 @@ h2 { margin: 10px 0 16px; }
     overflow: hidden;
     background: rgba(255,255,255,.035);
     cursor: zoom-in !important;
+}
+.tutorial-image-grid .tutorial-image-open {
+    min-height: 180px;
 }
 .tutorial-image-grid .tutorial-content-image {
     width: 100%;
@@ -676,7 +690,7 @@ h2 { margin: 10px 0 16px; }
 .tutorial-carousel-slide {
     display: none;
     width: 100%;
-    padding: 10px 58px 36px;
+    padding: 10px 58px 42px;
 }
 .tutorial-carousel-slide.active { display: block; }
 .tutorial-carousel-slide .tutorial-image-open { background: transparent; }
@@ -1015,6 +1029,20 @@ h2 { margin: 10px 0 16px; }
     border-radius: 9px;
     background: rgba(0,0,0,.12);
 }
+.tutorial-admin-image-list.single-image {
+    display: block;
+}
+.tutorial-admin-image-list.single-image .tutorial-admin-image-item {
+    width: 100%;
+}
+.tutorial-admin-image-list.single-image .tutorial-admin-image-preview {
+    width: auto;
+    max-width: 100%;
+    height: auto;
+    max-height: 540px;
+    margin: 4px auto 0;
+    background: transparent;
+}
 .tutorial-image-admin-head {
     display: flex;
     flex-wrap: wrap;
@@ -1042,25 +1070,70 @@ h2 { margin: 10px 0 16px; }
 .tutorial-admin-image-item {
     position: relative;
     min-width: 0;
-    padding: 7px;
+    padding: 46px 7px 7px;
     border-radius: 11px;
     border: 1px solid rgba(255,255,255,.10);
     background: rgba(0,0,0,.14);
 }
-.tutorial-admin-image-remove {
+.tutorial-admin-image-actions {
     position: absolute;
     top: 10px;
     right: 10px;
+    z-index: 3;
+    display: flex;
+    gap: 5px;
+}
+.tutorial-admin-image-move,
+.tutorial-admin-image-remove {
     width: 28px;
     height: 28px;
     padding: 0;
     border-radius: 8px;
-    border: 1px solid rgba(255,150,150,.25);
-    background: rgba(15,15,19,.84);
-    color: #ffb0b0;
-    z-index: 2;
-    font-size: 18px;
+    background: rgba(15,15,19,.88);
     line-height: 1;
+}
+.tutorial-admin-image-move {
+    border: 1px solid rgba(255,255,255,.16);
+    color: #e4e7ed;
+    font-size: 15px;
+}
+.tutorial-admin-image-move:hover:not(:disabled) {
+    border-color: rgba(255,196,108,.42);
+    background: rgba(255,196,108,.12);
+}
+.tutorial-admin-image-move:disabled {
+    opacity: .30;
+    cursor: default !important;
+}
+.tutorial-admin-image-remove {
+    border: 1px solid rgba(255,150,150,.25);
+    color: #ffb0b0;
+    font-size: 18px;
+}
+.tutorial-admin-image-title-label {
+    display: block;
+    margin-top: 8px;
+    color: #c9ced7;
+    font-size: 12px;
+    text-align: left;
+}
+.tutorial-admin-image-title-label > span {
+    display: block;
+    margin-bottom: 5px;
+}
+.tutorial-admin-image-title-input {
+    width: 100%;
+    min-height: 34px;
+    padding: 7px 9px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,.12);
+    background: rgba(0,0,0,.24);
+    color: white;
+    font-size: 14px;
+    outline: none;
+}
+.tutorial-admin-image-title-input:focus {
+    border-color: rgba(255,196,108,.48);
 }
 .tutorial-admin-image-name {
     display: block;
@@ -1447,6 +1520,7 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
     let adminToken = null;
     let openMenuId = null;
     let activeEditor = null;
+    const editorRanges = new Map();
 
     const accordion = document.getElementById("tutorialAccordion");
     const adminToolbar = document.getElementById("tutorialAdminToolbar");
@@ -1519,18 +1593,21 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
                             block.images.push({
                                 id: uid("img"),
                                 data: block.data,
-                                alt: block.alt || "Image du tutoriel"
+                                alt: block.alt || "Image du tutoriel",
+                                title: typeof block.title === "string" ? block.title : ""
                             });
                         }
                     }
                     block.images = block.images.filter(image => image && String(image.data || "").startsWith("data:image/")).map(image => ({
                         id: image.id || uid("img"),
                         data: image.data,
-                        alt: image.alt || "Image du tutoriel"
+                        alt: image.alt || "Image du tutoriel",
+                        title: typeof image.title === "string" ? image.title : ""
                     }));
                     block.layout = block.layout === "carousel" ? "carousel" : "grid";
                     delete block.data;
                     delete block.alt;
+                    delete block.title;
                 }
             });
         });
@@ -1567,6 +1644,31 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
     function sanitizeRichHtml(htmlValue) {
         const template = document.createElement("template");
         template.innerHTML = String(htmlValue || "");
+
+        /*
+           Les anciennes versions de l'éditeur utilisaient parfois <font size="…">.
+           On les convertit en spans avec une taille CSS exacte afin de conserver
+           les tailles différentes déjà enregistrées dans les tutoriels.
+        */
+        const legacyFontSizes = {
+            "1": "10px",
+            "2": "13px",
+            "3": "16px",
+            "4": "18px",
+            "5": "24px",
+            "6": "32px",
+            "7": "40px"
+        };
+        template.content.querySelectorAll("font").forEach(font => {
+            const span = document.createElement("span");
+            const legacySize = font.getAttribute("size");
+            const inlineSize = font.style && font.style.fontSize ? font.style.fontSize : "";
+            const size = inlineSize || legacyFontSizes[legacySize] || "";
+            if (size) span.style.fontSize = size;
+            while (font.firstChild) span.appendChild(font.firstChild);
+            font.replaceWith(span);
+        });
+
         const allowed = new Set(["B","STRONG","I","EM","U","SPAN","BR","DIV","P","IMG"]);
         const allowedStyles = new Set(["font-size","font-weight","font-style","text-decoration","text-align"]);
 
@@ -1743,21 +1845,50 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
             const images = Array.isArray(block.images) ? block.images.filter(image => String(image?.data || "").startsWith("data:image/")) : [];
             if (!images.length) return "";
 
-            if (block.layout === "carousel") {
-                const slides = images.map((image, index) => `<div class="tutorial-carousel-slide${index === 0 ? " active" : ""}" data-carousel-index="${index}">
-                    <button type="button" class="tutorial-image-open" data-image-src="${escapeHtml(image.data)}" data-image-alt="${escapeHtml(image.alt || "Image du tutoriel")}" aria-label="Agrandir l'image ${index + 1}">
-                        <img class="tutorial-content-image" src="${escapeHtml(image.data)}" alt="${escapeHtml(image.alt || "Image du tutoriel")}" loading="lazy" decoding="async">
-                    </button>
-                </div>`).join("");
-                return `<div class="tutorial-public-block tutorial-carousel" data-carousel data-carousel-current="0">
-                    <div class="tutorial-carousel-stage">${slides}</div>
-                    ${images.length > 1 ? `<button type="button" class="tutorial-carousel-arrow tutorial-carousel-prev" data-carousel-prev aria-label="Image précédente">‹</button><button type="button" class="tutorial-carousel-arrow tutorial-carousel-next" data-carousel-next aria-label="Image suivante">›</button><div class="tutorial-carousel-position"><span data-carousel-position>1</span> / ${images.length}</div>` : ""}
+            /*
+               Avec une seule image, on conserve volontairement l'affichage
+               historique : une grande image seule, centrée, sans galerie ni
+               carrousel autour d'elle.
+            */
+            if (images.length === 1) {
+                const image = images[0];
+                const title = String(image.title || "").trim();
+                const alt = title || image.alt || "Image du tutoriel";
+                return `<div class="tutorial-public-block tutorial-single-image">
+                    <img class="tutorial-content-image" src="${escapeHtml(image.data)}" alt="${escapeHtml(alt)}" loading="lazy" decoding="async">
+                    ${title ? `<div class="tutorial-image-caption">${escapeHtml(title)}</div>` : ""}
                 </div>`;
             }
 
-            const cells = images.map((image, index) => `<button type="button" class="tutorial-image-open" data-image-src="${escapeHtml(image.data)}" data-image-alt="${escapeHtml(image.alt || "Image du tutoriel")}" aria-label="Agrandir l'image ${index + 1}">
-                <img class="tutorial-content-image" src="${escapeHtml(image.data)}" alt="${escapeHtml(image.alt || "Image du tutoriel")}" loading="lazy" decoding="async">
-            </button>`).join("");
+            if (block.layout === "carousel") {
+                const slides = images.map((image, index) => {
+                    const title = String(image.title || "").trim();
+                    const alt = title || image.alt || "Image du tutoriel";
+                    return `<div class="tutorial-carousel-slide${index === 0 ? " active" : ""}" data-carousel-index="${index}">
+                        <button type="button" class="tutorial-image-open" data-image-src="${escapeHtml(image.data)}" data-image-alt="${escapeHtml(alt)}" aria-label="Agrandir l'image ${index + 1}">
+                            <img class="tutorial-content-image" src="${escapeHtml(image.data)}" alt="${escapeHtml(alt)}" loading="lazy" decoding="async">
+                        </button>
+                        ${title ? `<div class="tutorial-image-caption">${escapeHtml(title)}</div>` : ""}
+                    </div>`;
+                }).join("");
+                return `<div class="tutorial-public-block tutorial-carousel" data-carousel data-carousel-current="0">
+                    <div class="tutorial-carousel-stage">${slides}</div>
+                    <button type="button" class="tutorial-carousel-arrow tutorial-carousel-prev" data-carousel-prev aria-label="Image précédente">‹</button>
+                    <button type="button" class="tutorial-carousel-arrow tutorial-carousel-next" data-carousel-next aria-label="Image suivante">›</button>
+                    <div class="tutorial-carousel-position"><span data-carousel-position>1</span> / ${images.length}</div>
+                </div>`;
+            }
+
+            const cells = images.map((image, index) => {
+                const title = String(image.title || "").trim();
+                const alt = title || image.alt || "Image du tutoriel";
+                return `<figure class="tutorial-image-figure">
+                    <button type="button" class="tutorial-image-open" data-image-src="${escapeHtml(image.data)}" data-image-alt="${escapeHtml(alt)}" aria-label="Agrandir l'image ${index + 1}">
+                        <img class="tutorial-content-image" src="${escapeHtml(image.data)}" alt="${escapeHtml(alt)}" loading="lazy" decoding="async">
+                    </button>
+                    ${title ? `<figcaption class="tutorial-image-caption">${escapeHtml(title)}</figcaption>` : ""}
+                </figure>`;
+            }).join("");
             return `<div class="tutorial-public-block tutorial-image-grid">${cells}</div>`;
         }
         if (block.type === "video") {
@@ -1805,8 +1936,28 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
                     <button type="button" data-command="bold"><strong>G</strong></button>
                     <button type="button" data-command="italic"><em>I</em></button>
                     <button type="button" data-command="underline"><u>S</u></button>
-                    <select data-command="fontSize" title="Taille de la police">
-                        <option value="3">16 px</option><option value="2">13 px</option><option value="4">18 px</option><option value="5">24 px</option><option value="6">32 px</option><option value="7">40 px</option>
+                    <select data-action="font-size" title="Taille de la police" aria-label="Taille de la police">
+                        <option value="">Taille</option>
+                        <option value="10">10 px</option>
+                        <option value="11">11 px</option>
+                        <option value="12">12 px</option>
+                        <option value="13">13 px</option>
+                        <option value="14">14 px</option>
+                        <option value="15">15 px</option>
+                        <option value="16">16 px</option>
+                        <option value="18">18 px</option>
+                        <option value="20">20 px</option>
+                        <option value="22">22 px</option>
+                        <option value="24">24 px</option>
+                        <option value="26">26 px</option>
+                        <option value="28">28 px</option>
+                        <option value="32">32 px</option>
+                        <option value="36">36 px</option>
+                        <option value="40">40 px</option>
+                        <option value="48">48 px</option>
+                        <option value="56">56 px</option>
+                        <option value="64">64 px</option>
+                        <option value="72">72 px</option>
                     </select>
                     <button type="button" data-command="justifyLeft">↤</button>
                     <button type="button" data-command="justifyCenter">↔</button>
@@ -1819,9 +1970,18 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
         }
         if (block.type === "image") {
             const images = Array.isArray(block.images) ? block.images : [];
+            const isSingleImage = images.length === 1;
             const previews = images.length ? images.map((image, imageIndex) => `<div class="tutorial-admin-image-item">
-                <button type="button" class="tutorial-admin-image-remove" data-action="remove-image-from-block" data-menu-id="${menu.id}" data-block-id="${block.id}" data-image-id="${image.id}" title="Retirer cette image" aria-label="Retirer cette image">×</button>
+                <div class="tutorial-admin-image-actions">
+                    <button type="button" class="tutorial-admin-image-move" data-action="move-image-up" data-menu-id="${menu.id}" data-block-id="${block.id}" data-image-id="${image.id}" title="Déplacer cette image vers la gauche / avant" aria-label="Monter cette image dans l'ordre" ${imageIndex === 0 ? "disabled" : ""}>↑</button>
+                    <button type="button" class="tutorial-admin-image-move" data-action="move-image-down" data-menu-id="${menu.id}" data-block-id="${block.id}" data-image-id="${image.id}" title="Déplacer cette image vers la droite / après" aria-label="Descendre cette image dans l'ordre" ${imageIndex === images.length - 1 ? "disabled" : ""}>↓</button>
+                    <button type="button" class="tutorial-admin-image-remove" data-action="remove-image-from-block" data-menu-id="${menu.id}" data-block-id="${block.id}" data-image-id="${image.id}" title="Retirer cette image" aria-label="Retirer cette image">×</button>
+                </div>
                 <img class="tutorial-admin-image-preview" src="${escapeHtml(image.data || "")}" alt="Aperçu de l'image ${imageIndex + 1}">
+                <label class="tutorial-admin-image-title-label">
+                    <span>Titre de l'image</span>
+                    <input class="tutorial-admin-image-title-input" type="text" maxlength="180" placeholder="Titre facultatif" value="${escapeHtml(image.title || "")}" data-action="image-title" data-menu-id="${menu.id}" data-block-id="${block.id}" data-image-id="${image.id}">
+                </label>
                 <span class="tutorial-admin-image-name">${escapeHtml(image.alt || `Image ${imageIndex + 1}`)}</span>
             </div>`).join("") : '<div class="tutorial-admin-image-empty">Aucune image dans cette partie.</div>';
             return `<div class="tutorial-admin-block" data-block-id="${block.id}">
@@ -1835,7 +1995,7 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
                     <button type="button" class="tutorial-image-add-more" data-action="add-images-to-block" data-menu-id="${menu.id}" data-block-id="${block.id}">+ Ajouter des images</button>
                     <input type="file" accept="image/*" multiple data-image-block-input="${block.id}" data-menu-id="${menu.id}" hidden>
                 </div>
-                <div class="tutorial-admin-image-list">${previews}</div>
+                <div class="tutorial-admin-image-list${isSingleImage ? " single-image" : ""}">${previews}</div>
             </div>`;
         }
         if (block.type === "video") {
@@ -2069,6 +2229,53 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
         setStatus(dataChanged() ? "Modifications non enregistrées." : "", "");
     }
 
+    function rememberEditorSelection(editor) {
+        if (!editor) return;
+        const selection = window.getSelection();
+        if (!selection || !selection.rangeCount) return;
+        const range = selection.getRangeAt(0);
+        if (!editor.contains(range.commonAncestorContainer)) return;
+        editorRanges.set(editor.id, range.cloneRange());
+    }
+
+    function restoreEditorSelection(editor) {
+        if (!editor) return false;
+        const range = editorRanges.get(editor.id);
+        editor.focus();
+        if (!range) return false;
+        const selection = window.getSelection();
+        if (!selection) return false;
+        selection.removeAllRanges();
+        selection.addRange(range);
+        return true;
+    }
+
+    function applyExactFontSize(editor, sizeValue) {
+        const px = Number(sizeValue);
+        if (!editor || !Number.isFinite(px) || px < 8 || px > 96) return;
+
+        restoreEditorSelection(editor);
+
+        /*
+           execCommand reste utile pour envelopper correctement une sélection riche,
+           mais sa taille 1-7 est trop limitée. On crée temporairement une balise FONT
+           taille 7, puis on la remplace immédiatement par un SPAN CSS en pixels.
+           Ainsi chaque portion de texte garde sa propre taille après sauvegarde.
+        */
+        document.execCommand("styleWithCSS", false, false);
+        document.execCommand("fontSize", false, "7");
+
+        editor.querySelectorAll('font[size="7"]').forEach(font => {
+            const span = document.createElement("span");
+            span.style.fontSize = px + "px";
+            while (font.firstChild) span.appendChild(font.firstChild);
+            font.replaceWith(span);
+        });
+
+        syncEditor(editor);
+        rememberEditorSelection(editor);
+    }
+
     function bindAdminEvents() {
         accordion.querySelectorAll('[data-action="menu-title"]').forEach(input => {
             input.addEventListener("input", () => {
@@ -2109,7 +2316,7 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
                     const images = [];
                     for (const file of files) {
                         const data = await compressImage(file, 1600, 1600, .84, 650 * 1024);
-                        images.push({ id: uid("img"), data, alt: file.name || "Image du tutoriel" });
+                        images.push({ id: uid("img"), data, alt: file.name || "Image du tutoriel", title: "" });
                     }
                     menu.blocks.push({ id: uid("image"), type: "image", layout: "grid", images });
                     openMenuId = menu.id;
@@ -2143,7 +2350,7 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
                     if (!Array.isArray(block.images)) block.images = [];
                     for (const file of files) {
                         const data = await compressImage(file, 1600, 1600, .84, 650 * 1024);
-                        block.images.push({ id: uid("img"), data, alt: file.name || "Image du tutoriel" });
+                        block.images.push({ id: uid("img"), data, alt: file.name || "Image du tutoriel", title: "" });
                     }
                     openMenuId = menu.id;
                     renderAdmin();
@@ -2153,6 +2360,37 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
                     setStatus("Impossible d'ajouter une ou plusieurs images.", "error");
                 }
                 input.value = "";
+            });
+        });
+
+        accordion.querySelectorAll('[data-action="image-title"]').forEach(input => {
+            input.addEventListener("input", () => {
+                const menu = findMenu(input.dataset.menuId);
+                const block = findBlock(menu, input.dataset.blockId);
+                if (!menu || !block || block.type !== "image" || !Array.isArray(block.images)) return;
+                const image = block.images.find(item => item.id === input.dataset.imageId);
+                if (!image) return;
+                image.title = input.value;
+                markDirty();
+            });
+        });
+
+        accordion.querySelectorAll('[data-action="move-image-up"], [data-action="move-image-down"]').forEach(button => {
+            button.addEventListener("click", () => {
+                const menu = findMenu(button.dataset.menuId);
+                const block = findBlock(menu, button.dataset.blockId);
+                if (!menu || !block || block.type !== "image" || !Array.isArray(block.images)) return;
+
+                const currentIndex = block.images.findIndex(image => image.id === button.dataset.imageId);
+                if (currentIndex < 0) return;
+                const direction = button.dataset.action === "move-image-up" ? -1 : 1;
+                const targetIndex = currentIndex + direction;
+                if (targetIndex < 0 || targetIndex >= block.images.length) return;
+
+                [block.images[currentIndex], block.images[targetIndex]] = [block.images[targetIndex], block.images[currentIndex]];
+                openMenuId = menu.id;
+                renderAdmin();
+                markDirty();
             });
         });
 
@@ -2212,11 +2450,17 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
         });
 
         accordion.querySelectorAll(".tutorial-editor").forEach(editor => {
-            editor.addEventListener("focus", () => { activeEditor = editor; });
+            editor.addEventListener("focus", () => {
+                activeEditor = editor;
+                rememberEditorSelection(editor);
+            });
+            editor.addEventListener("mouseup", () => rememberEditorSelection(editor));
+            editor.addEventListener("keyup", () => rememberEditorSelection(editor));
             editor.addEventListener("input", () => {
                 const menu = findMenu(editor.dataset.menuId);
                 const block = findBlock(menu, editor.dataset.blockId);
                 if (block) block.html = editor.innerHTML;
+                rememberEditorSelection(editor);
                 markDirty();
             });
         });
@@ -2233,15 +2477,19 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
                     syncEditor(editor);
                 });
             });
-            const size = toolbar.querySelector('select[data-command="fontSize"]');
-            if (size) size.addEventListener("change", () => {
-                const editor = document.getElementById(toolbar.dataset.editorId);
-                if (!editor) return;
-                editor.focus();
-                document.execCommand("styleWithCSS", false, true);
-                document.execCommand("fontSize", false, size.value);
-                syncEditor(editor);
-            });
+            const size = toolbar.querySelector('select[data-action="font-size"]');
+            if (size) {
+                size.addEventListener("mousedown", () => {
+                    const editor = document.getElementById(toolbar.dataset.editorId);
+                    if (editor) rememberEditorSelection(editor);
+                });
+                size.addEventListener("change", () => {
+                    const editor = document.getElementById(toolbar.dataset.editorId);
+                    if (!editor || !size.value) return;
+                    applyExactFontSize(editor, size.value);
+                    size.value = "";
+                });
+            }
         });
 
         accordion.querySelectorAll('[data-action="toggle-emoji"]').forEach(button => {
