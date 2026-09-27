@@ -630,6 +630,133 @@ h2 { margin: 10px 0 16px; }
     border-radius: 14px;
     box-shadow: 0 12px 30px rgba(0,0,0,.28);
 }
+
+/* Parties Image : galerie côte à côte */
+.tutorial-image-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr));
+    gap: 12px;
+    align-items: stretch;
+}
+.tutorial-image-open {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: 14px;
+    overflow: hidden;
+    background: rgba(255,255,255,.035);
+    cursor: zoom-in !important;
+}
+.tutorial-image-grid .tutorial-content-image {
+    width: 100%;
+    height: 100%;
+    min-height: 180px;
+    max-height: 430px;
+    object-fit: contain;
+    box-shadow: none;
+}
+
+/* Parties Image : carrousel */
+.tutorial-carousel {
+    position: relative;
+    width: 100%;
+    min-height: 220px;
+    border-radius: 16px;
+    overflow: hidden;
+    background: rgba(0,0,0,.18);
+    border: 1px solid rgba(255,255,255,.08);
+    touch-action: pan-y;
+}
+.tutorial-carousel-stage {
+    position: relative;
+    width: 100%;
+    min-height: 220px;
+}
+.tutorial-carousel-slide {
+    display: none;
+    width: 100%;
+    padding: 10px 58px 36px;
+}
+.tutorial-carousel-slide.active { display: block; }
+.tutorial-carousel-slide .tutorial-image-open { background: transparent; }
+.tutorial-carousel-slide .tutorial-content-image {
+    width: 100%;
+    max-height: 650px;
+    object-fit: contain;
+    box-shadow: none;
+}
+.tutorial-carousel-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 3;
+    width: 42px;
+    height: 54px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,.14);
+    background: rgba(13,15,21,.78);
+    color: white;
+    font-size: 29px;
+    line-height: 1;
+    backdrop-filter: blur(5px);
+}
+.tutorial-carousel-arrow:hover { background: rgba(38,41,52,.94); }
+.tutorial-carousel-prev { left: 10px; }
+.tutorial-carousel-next { right: 10px; }
+.tutorial-carousel-position {
+    position: absolute;
+    left: 50%;
+    bottom: 9px;
+    transform: translateX(-50%);
+    z-index: 3;
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: rgba(8,10,14,.75);
+    color: #dfe3eb;
+    font-size: 12px;
+    pointer-events: none;
+}
+
+/* Agrandissement d'une image sans changer de page */
+.tutorial-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 100300;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(2,4,8,.88);
+    backdrop-filter: blur(7px);
+}
+.tutorial-lightbox[hidden] { display: none; }
+.tutorial-lightbox-image {
+    display: block;
+    max-width: min(96vw, 1500px);
+    max-height: 91vh;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: 12px;
+    box-shadow: 0 24px 80px rgba(0,0,0,.58);
+}
+.tutorial-lightbox-close {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,.18);
+    background: rgba(20,22,29,.86);
+    color: white;
+    font-size: 26px;
+    line-height: 1;
+}
 .tutorial-video-wrap {
     position: relative;
     width: 100%;
@@ -881,10 +1008,75 @@ h2 { margin: 10px 0 16px; }
 
 .tutorial-admin-image-preview {
     display: block;
-    max-width: 100%;
-    max-height: 540px;
-    margin: 4px auto 0;
+    width: 100%;
+    height: 150px;
+    object-fit: contain;
+    margin: 0;
+    border-radius: 9px;
+    background: rgba(0,0,0,.12);
+}
+.tutorial-image-admin-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 9px;
+    padding-right: 105px;
+    margin-bottom: 12px;
+}
+.tutorial-image-admin-head strong { margin-right: auto; }
+.tutorial-image-layout-select,
+.tutorial-image-add-more {
+    min-height: 34px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,.13);
+    background: rgba(0,0,0,.24);
+    color: white;
+    padding: 6px 9px;
+}
+.tutorial-image-add-more { font-weight: 700; }
+.tutorial-admin-image-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 10px;
+}
+.tutorial-admin-image-item {
+    position: relative;
+    min-width: 0;
+    padding: 7px;
+    border-radius: 11px;
+    border: 1px solid rgba(255,255,255,.10);
+    background: rgba(0,0,0,.14);
+}
+.tutorial-admin-image-remove {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border-radius: 8px;
+    border: 1px solid rgba(255,150,150,.25);
+    background: rgba(15,15,19,.84);
+    color: #ffb0b0;
+    z-index: 2;
+    font-size: 18px;
+    line-height: 1;
+}
+.tutorial-admin-image-name {
+    display: block;
+    margin-top: 6px;
+    color: #aeb5c1;
+    font-size: 11px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.tutorial-admin-image-empty {
+    padding: 18px;
+    border: 1px dashed rgba(255,255,255,.13);
     border-radius: 10px;
+    color: #aeb5c1;
+    text-align: center;
 }
 .tutorial-admin-video-preview {
     color: #cbd1da;
@@ -1071,6 +1263,9 @@ h2 { margin: 10px 0 16px; }
 
 @media (max-width:760px) {
     body { padding:18px 10px; background-attachment:scroll; }
+    .tutorial-carousel-slide { padding: 8px 44px 34px; }
+    .tutorial-carousel-arrow { width: 34px; height: 48px; font-size: 24px; }
+    .tutorial-image-admin-head { padding-right: 0; padding-top: 34px; }
     .card { border-radius:20px; }
     .site-head { padding:25px 16px 12px; }
     .logo { width:145px; }
@@ -1317,6 +1512,26 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
             if (!Array.isArray(menu.blocks)) menu.blocks = [];
             menu.blocks.forEach(block => {
                 if (!block.id) block.id = uid("block");
+                if (block.type === "image") {
+                    if (!Array.isArray(block.images)) {
+                        block.images = [];
+                        if (String(block.data || "").startsWith("data:image/")) {
+                            block.images.push({
+                                id: uid("img"),
+                                data: block.data,
+                                alt: block.alt || "Image du tutoriel"
+                            });
+                        }
+                    }
+                    block.images = block.images.filter(image => image && String(image.data || "").startsWith("data:image/")).map(image => ({
+                        id: image.id || uid("img"),
+                        data: image.data,
+                        alt: image.alt || "Image du tutoriel"
+                    }));
+                    block.layout = block.layout === "carousel" ? "carousel" : "grid";
+                    delete block.data;
+                    delete block.alt;
+                }
             });
         });
         return data;
@@ -1524,8 +1739,26 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
         if (block.type === "text") {
             return `<div class="tutorial-public-block tutorial-text">${linkifyTutorialSyntax(block.html || "")}</div>`;
         }
-        if (block.type === "image" && String(block.data || "").startsWith("data:image/")) {
-            return `<div class="tutorial-public-block"><img class="tutorial-content-image" src="${escapeHtml(block.data)}" alt="${escapeHtml(block.alt || "Image du tutoriel")}" loading="lazy" decoding="async"></div>`;
+        if (block.type === "image") {
+            const images = Array.isArray(block.images) ? block.images.filter(image => String(image?.data || "").startsWith("data:image/")) : [];
+            if (!images.length) return "";
+
+            if (block.layout === "carousel") {
+                const slides = images.map((image, index) => `<div class="tutorial-carousel-slide${index === 0 ? " active" : ""}" data-carousel-index="${index}">
+                    <button type="button" class="tutorial-image-open" data-image-src="${escapeHtml(image.data)}" data-image-alt="${escapeHtml(image.alt || "Image du tutoriel")}" aria-label="Agrandir l'image ${index + 1}">
+                        <img class="tutorial-content-image" src="${escapeHtml(image.data)}" alt="${escapeHtml(image.alt || "Image du tutoriel")}" loading="lazy" decoding="async">
+                    </button>
+                </div>`).join("");
+                return `<div class="tutorial-public-block tutorial-carousel" data-carousel data-carousel-current="0">
+                    <div class="tutorial-carousel-stage">${slides}</div>
+                    ${images.length > 1 ? `<button type="button" class="tutorial-carousel-arrow tutorial-carousel-prev" data-carousel-prev aria-label="Image précédente">‹</button><button type="button" class="tutorial-carousel-arrow tutorial-carousel-next" data-carousel-next aria-label="Image suivante">›</button><div class="tutorial-carousel-position"><span data-carousel-position>1</span> / ${images.length}</div>` : ""}
+                </div>`;
+            }
+
+            const cells = images.map((image, index) => `<button type="button" class="tutorial-image-open" data-image-src="${escapeHtml(image.data)}" data-image-alt="${escapeHtml(image.alt || "Image du tutoriel")}" aria-label="Agrandir l'image ${index + 1}">
+                <img class="tutorial-content-image" src="${escapeHtml(image.data)}" alt="${escapeHtml(image.alt || "Image du tutoriel")}" loading="lazy" decoding="async">
+            </button>`).join("");
+            return `<div class="tutorial-public-block tutorial-image-grid">${cells}</div>`;
         }
         if (block.type === "video") {
             const id = youtubeId(block.url);
@@ -1556,6 +1789,7 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
         }).join("");
         bindAccordionEvents();
         bindAnchorEvents();
+        bindTutorialImageEvents();
     }
 
     function renderAdminBlock(menu, block, blockIndex) {
@@ -1584,7 +1818,25 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
             </div>`;
         }
         if (block.type === "image") {
-            return `<div class="tutorial-admin-block" data-block-id="${block.id}">${controls}<img class="tutorial-admin-image-preview" src="${escapeHtml(block.data || "")}" alt="Aperçu de l'image"></div>`;
+            const images = Array.isArray(block.images) ? block.images : [];
+            const previews = images.length ? images.map((image, imageIndex) => `<div class="tutorial-admin-image-item">
+                <button type="button" class="tutorial-admin-image-remove" data-action="remove-image-from-block" data-menu-id="${menu.id}" data-block-id="${block.id}" data-image-id="${image.id}" title="Retirer cette image" aria-label="Retirer cette image">×</button>
+                <img class="tutorial-admin-image-preview" src="${escapeHtml(image.data || "")}" alt="Aperçu de l'image ${imageIndex + 1}">
+                <span class="tutorial-admin-image-name">${escapeHtml(image.alt || `Image ${imageIndex + 1}`)}</span>
+            </div>`).join("") : '<div class="tutorial-admin-image-empty">Aucune image dans cette partie.</div>';
+            return `<div class="tutorial-admin-block" data-block-id="${block.id}">
+                ${controls}
+                <div class="tutorial-image-admin-head">
+                    <strong>Partie image</strong>
+                    <select class="tutorial-image-layout-select" data-action="image-layout" data-menu-id="${menu.id}" data-block-id="${block.id}" title="Mode d'affichage">
+                        <option value="grid" ${block.layout !== "carousel" ? "selected" : ""}>Photos côte à côte</option>
+                        <option value="carousel" ${block.layout === "carousel" ? "selected" : ""}>Déroulant d'images</option>
+                    </select>
+                    <button type="button" class="tutorial-image-add-more" data-action="add-images-to-block" data-menu-id="${menu.id}" data-block-id="${block.id}">+ Ajouter des images</button>
+                    <input type="file" accept="image/*" multiple data-image-block-input="${block.id}" data-menu-id="${menu.id}" hidden>
+                </div>
+                <div class="tutorial-admin-image-list">${previews}</div>
+            </div>`;
         }
         if (block.type === "video") {
             return `<div class="tutorial-admin-block" data-block-id="${block.id}">${controls}<div class="tutorial-admin-video-preview">Vidéo YouTube : ${escapeHtml(block.url || "")}</div></div>`;
@@ -1612,7 +1864,7 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
                         <button type="button" data-action="add-image" data-menu-id="${menu.id}">Image</button>
                         <button type="button" data-action="add-video" data-menu-id="${menu.id}">Vidéo</button>
                     </div>
-                    <input type="file" accept="image/*" data-image-input-for="${menu.id}" hidden>
+                    <input type="file" accept="image/*" multiple data-image-input-for="${menu.id}" hidden>
                     ${blocks}
                 </div>
             </section>`;
@@ -1704,6 +1956,91 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
         });
     }
 
+    function ensureTutorialLightbox() {
+        let lightbox = document.getElementById("tutorialImageLightbox");
+        if (lightbox) return lightbox;
+        lightbox = document.createElement("div");
+        lightbox.id = "tutorialImageLightbox";
+        lightbox.className = "tutorial-lightbox";
+        lightbox.hidden = true;
+        lightbox.innerHTML = `<button type="button" class="tutorial-lightbox-close" aria-label="Fermer l'image agrandie">×</button><img class="tutorial-lightbox-image" alt="Image agrandie">`;
+        document.body.appendChild(lightbox);
+        const close = () => {
+            lightbox.hidden = true;
+            const image = lightbox.querySelector(".tutorial-lightbox-image");
+            if (image) image.removeAttribute("src");
+        };
+        lightbox.querySelector(".tutorial-lightbox-close").addEventListener("click", close);
+        lightbox.addEventListener("click", event => {
+            if (event.target === lightbox) close();
+        });
+        document.addEventListener("keydown", event => {
+            if (event.key === "Escape" && !lightbox.hidden) close();
+        });
+        return lightbox;
+    }
+
+    function openTutorialLightbox(src, alt) {
+        const lightbox = ensureTutorialLightbox();
+        const image = lightbox.querySelector(".tutorial-lightbox-image");
+        image.src = src;
+        image.alt = alt || "Image du tutoriel agrandie";
+        lightbox.hidden = false;
+    }
+
+    function updateCarousel(carousel, nextIndex) {
+        const slides = [...carousel.querySelectorAll(".tutorial-carousel-slide")];
+        if (!slides.length) return;
+        let index = Number(nextIndex);
+        if (!Number.isFinite(index)) index = 0;
+        index = (index % slides.length + slides.length) % slides.length;
+        slides.forEach((slide, slideIndex) => slide.classList.toggle("active", slideIndex === index));
+        carousel.dataset.carouselCurrent = String(index);
+        const position = carousel.querySelector("[data-carousel-position]");
+        if (position) position.textContent = String(index + 1);
+    }
+
+    function bindTutorialImageEvents() {
+        accordion.querySelectorAll(".tutorial-image-open").forEach(button => {
+            button.addEventListener("click", event => {
+                const carousel = button.closest("[data-carousel]");
+                if (carousel && carousel.dataset.carouselSwiped === "1") {
+                    carousel.dataset.carouselSwiped = "0";
+                    event.preventDefault();
+                    return;
+                }
+                openTutorialLightbox(button.dataset.imageSrc || "", button.dataset.imageAlt || "Image du tutoriel");
+            });
+        });
+
+        accordion.querySelectorAll("[data-carousel]").forEach(carousel => {
+            const previous = carousel.querySelector("[data-carousel-prev]");
+            const next = carousel.querySelector("[data-carousel-next]");
+            const move = direction => {
+                const current = Number(carousel.dataset.carouselCurrent || 0);
+                updateCarousel(carousel, current + direction);
+            };
+            if (previous) previous.addEventListener("click", () => move(-1));
+            if (next) next.addEventListener("click", () => move(1));
+
+            let startX = null;
+            carousel.addEventListener("pointerdown", event => {
+                if (event.pointerType === "mouse" && event.button !== 0) return;
+                carousel.dataset.carouselSwiped = "0";
+                startX = event.clientX;
+            });
+            carousel.addEventListener("pointerup", event => {
+                if (startX === null) return;
+                const delta = event.clientX - startX;
+                startX = null;
+                if (Math.abs(delta) < 45) return;
+                carousel.dataset.carouselSwiped = "1";
+                move(delta < 0 ? 1 : -1);
+            });
+            carousel.addEventListener("pointercancel", () => { startX = null; });
+        });
+    }
+
     function openTutorialFromHash(scroll = true) {
         const hash = decodeURIComponent(String(location.hash || "").replace(/^#/, ""));
         if (!hash) return false;
@@ -1763,21 +2100,81 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
 
         accordion.querySelectorAll('[data-image-input-for]').forEach(input => {
             input.addEventListener("change", async () => {
-                const file = input.files && input.files[0];
-                if (!file) return;
+                const files = [...(input.files || [])];
+                if (!files.length) return;
                 try {
-                    setStatus("Préparation de l'image…", "");
-                    const data = await compressImage(file, 1600, 1600, .84, 650 * 1024);
                     const menu = findMenu(input.dataset.imageInputFor);
                     if (!menu) return;
-                    menu.blocks.push({ id: uid("image"), type: "image", data, alt: file.name || "Image du tutoriel" });
+                    setStatus(`Préparation de ${files.length} image${files.length > 1 ? "s" : ""}…`, "");
+                    const images = [];
+                    for (const file of files) {
+                        const data = await compressImage(file, 1600, 1600, .84, 650 * 1024);
+                        images.push({ id: uid("img"), data, alt: file.name || "Image du tutoriel" });
+                    }
+                    menu.blocks.push({ id: uid("image"), type: "image", layout: "grid", images });
                     openMenuId = menu.id;
                     renderAdmin();
                     markDirty();
                 } catch (error) {
-                    setStatus("Impossible d'importer cette image.", "error");
+                    console.error(error);
+                    setStatus("Impossible d'importer une ou plusieurs images.", "error");
                 }
                 input.value = "";
+            });
+        });
+
+        accordion.querySelectorAll('[data-action="add-images-to-block"]').forEach(button => {
+            button.addEventListener("click", () => {
+                const selector = `[data-image-block-input="${CSS.escape(button.dataset.blockId)}"]`;
+                const input = accordion.querySelector(selector);
+                if (input) input.click();
+            });
+        });
+
+        accordion.querySelectorAll('[data-image-block-input]').forEach(input => {
+            input.addEventListener("change", async () => {
+                const files = [...(input.files || [])];
+                if (!files.length) return;
+                const menu = findMenu(input.dataset.menuId);
+                const block = findBlock(menu, input.dataset.imageBlockInput);
+                if (!menu || !block || block.type !== "image") return;
+                try {
+                    setStatus(`Ajout de ${files.length} image${files.length > 1 ? "s" : ""}…`, "");
+                    if (!Array.isArray(block.images)) block.images = [];
+                    for (const file of files) {
+                        const data = await compressImage(file, 1600, 1600, .84, 650 * 1024);
+                        block.images.push({ id: uid("img"), data, alt: file.name || "Image du tutoriel" });
+                    }
+                    openMenuId = menu.id;
+                    renderAdmin();
+                    markDirty();
+                } catch (error) {
+                    console.error(error);
+                    setStatus("Impossible d'ajouter une ou plusieurs images.", "error");
+                }
+                input.value = "";
+            });
+        });
+
+        accordion.querySelectorAll('[data-action="remove-image-from-block"]').forEach(button => {
+            button.addEventListener("click", () => {
+                const menu = findMenu(button.dataset.menuId);
+                const block = findBlock(menu, button.dataset.blockId);
+                if (!menu || !block || !Array.isArray(block.images)) return;
+                block.images = block.images.filter(image => image.id !== button.dataset.imageId);
+                openMenuId = menu.id;
+                renderAdmin();
+                markDirty();
+            });
+        });
+
+        accordion.querySelectorAll('[data-action="image-layout"]').forEach(select => {
+            select.addEventListener("change", () => {
+                const menu = findMenu(select.dataset.menuId);
+                const block = findBlock(menu, select.dataset.blockId);
+                if (!block || block.type !== "image") return;
+                block.layout = select.value === "carousel" ? "carousel" : "grid";
+                markDirty();
             });
         });
 
