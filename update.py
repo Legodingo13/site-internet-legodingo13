@@ -1525,6 +1525,7 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
     const accordion = document.getElementById("tutorialAccordion");
     const adminToolbar = document.getElementById("tutorialAdminToolbar");
     const adminStatus = document.getElementById("tutorialAdminStatus");
+    const backupRestoreInput = document.getElementById("tutorialRestoreBackupInput");
     const copyToast = document.getElementById("tutorialCopyToast");
     const settingsButton = document.getElementById("tutorialSettingsButton");
     const settingsPopover = document.getElementById("tutorialSettingsPopover");
@@ -2817,6 +2818,87 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
         markDirty();
     }
 
+    function backupTimestamp(date = new Date()) {
+        const pad = value => String(value).padStart(2, "0");
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}_${pad(date.getHours())}-${pad(date.getMinutes())}-${pad(date.getSeconds())}`;
+    }
+
+    function downloadTutorialBackup() {
+        try {
+            const cleanData = normalizeData(deepClone(tutorialData));
+            ensureUniqueMenuSlugs(cleanData.menus);
+            const json = JSON.stringify(cleanData, null, 2);
+            const blob = new Blob([json], { type: "application/json;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `tutoriels-legodingo13-sauvegarde-${backupTimestamp()}.json`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            setStatus("Sauvegarde téléchargée sur ton ordinateur.", "success");
+        } catch (error) {
+            console.error(error);
+            setStatus("Impossible de créer la sauvegarde des tutoriels.", "error");
+        }
+    }
+
+    function requestRestoreTutorialBackup() {
+        if (!backupRestoreInput) return;
+        backupRestoreInput.value = "";
+        backupRestoreInput.click();
+    }
+
+    async function readRestoreTutorialBackup(event) {
+        const file = event.target.files && event.target.files[0];
+        event.target.value = "";
+        if (!file) return;
+
+        let parsed;
+        try {
+            parsed = JSON.parse(await file.text());
+        } catch (error) {
+            setStatus("Le fichier sélectionné n'est pas un fichier JSON valide.", "error");
+            return;
+        }
+
+        if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.menus)) {
+            setStatus("Cette sauvegarde n'est pas reconnue : la liste des tutoriels est absente.", "error");
+            return;
+        }
+
+        let restored;
+        try {
+            restored = normalizeData(deepClone(parsed));
+            ensureUniqueMenuSlugs(restored.menus);
+        } catch (error) {
+            console.error(error);
+            setStatus("Cette sauvegarde ne peut pas être restaurée.", "error");
+            return;
+        }
+
+        const menuCount = restored.menus.length;
+        const imageCount = restored.menus.reduce((total, menu) => total + (menu.blocks || []).reduce((subtotal, block) => {
+            return subtotal + (block.type === "image" && Array.isArray(block.images) ? block.images.length : 0);
+        }, 0), 0);
+        const details = `${menuCount} menu${menuCount > 1 ? "s" : ""}${imageCount ? ` et ${imageCount} image${imageCount > 1 ? "s" : ""}` : ""}`;
+
+        openConfirm(
+            "Restaurer une sauvegarde",
+            `Restaurer « ${file.name} » (${details}) ? Le contenu actuellement affiché dans la vue gestion sera remplacé. Rien ne sera publié sur le site tant que tu ne cliques pas sur « Enregistrer les modifications de la page ».`,
+            "Restaurer",
+            () => {
+                tutorialData = restored;
+                openMenuId = tutorialData.menus.length ? tutorialData.menus[0].id : null;
+                closeConfirm();
+                renderAdmin();
+                markDirty();
+                setStatus("Sauvegarde restaurée dans l'éditeur. Vérifie le contenu puis clique sur « Enregistrer les modifications de la page » pour la publier.", "success");
+            }
+        );
+    }
+
     function bytesToBase64(bytes) {
         let binary = "";
         const chunk = 0x8000;
@@ -2939,6 +3021,9 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
     document.getElementById("tutorialCreateMenu").addEventListener("click", createMenuRequest);
     document.getElementById("tutorialDeleteMenu").addEventListener("click", deleteMenuRequest);
     document.getElementById("tutorialReorderMenus").addEventListener("click", openOrderMenuModal);
+    document.getElementById("tutorialDownloadBackup").addEventListener("click", downloadTutorialBackup);
+    document.getElementById("tutorialRestoreBackup").addEventListener("click", requestRestoreTutorialBackup);
+    if (backupRestoreInput) backupRestoreInput.addEventListener("change", readRestoreTutorialBackup);
     document.getElementById("tutorialSavePage").addEventListener("click", savePage);
     document.getElementById("tutorialQuitAdmin").addEventListener("click", quitAdmin);
 
@@ -3293,6 +3378,9 @@ Retrouve ici les tutoriels et guides de jeu publiés par Legodingo13.
     <button id="tutorialCreateMenu" type="button">Créer un menu déroulant</button>
     <button id="tutorialDeleteMenu" type="button">Supprimer un menu déroulant</button>
     <button id="tutorialReorderMenus" type="button">Changer l’ordre des menus</button>
+    <button id="tutorialDownloadBackup" type="button">⬇ Télécharger une sauvegarde</button>
+    <button id="tutorialRestoreBackup" type="button">⬆ Restaurer une sauvegarde</button>
+    <input id="tutorialRestoreBackupInput" type="file" accept=".json,application/json" hidden>
     <button id="tutorialSavePage" class="tutorial-save-button" type="button">Enregistrer les modifications de la page</button>
     <button id="tutorialQuitAdmin" type="button">Quitter la vue gestion de la page</button>
     <div id="tutorialAdminStatus" class="tutorial-admin-status"></div>
