@@ -3700,7 +3700,7 @@ shell(
     "index.html",
     "accueil",
     "Legodingo13 - Communauté Forge of Empires",
-    f"Site de Legodingo13 : serveur Discord Forge of Empires avec {member_count} membres, chaîne YouTube et tableau communautaire.",
+    f"Découvrez les tutoriels et guides Forge of Empires de Legodingo13, son serveur Discord de {member_count} membres et sa chaîne YouTube.",
     home_body,
 )
 
