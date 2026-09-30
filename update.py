@@ -1514,9 +1514,9 @@ h2 { margin: 10px 0 16px; }
 }
 .eg-relic {
     position: absolute;
-    width: 580px;
-    height: 580px;
-    padding: 8px;
+    width: 150px;
+    height: 150px;
+    padding: 0;
     border: 0;
     background: transparent;
     transform: translate(-50%, -50%);
@@ -1530,10 +1530,9 @@ h2 { margin: 10px 0 16px; }
 }
 .eg-relic img {
     display: block;
-    max-width: 100%;
-    max-height: 100%;
-    width: auto;
-    height: auto;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
     pointer-events: none;
 }
 .eg-relic:hover,
@@ -1715,7 +1714,7 @@ h2 { margin: 10px 0 16px; }
 
 @media (max-width:760px) {
     .eg-map-viewport { height:330px; }
-    .eg-relic { width:528px; height:528px; }
+    .eg-relic { width:138px; height:138px; }
 }
 
 @media (max-width:760px) {
