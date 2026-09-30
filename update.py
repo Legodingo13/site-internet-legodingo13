@@ -1498,7 +1498,7 @@ h2 { margin: 10px 0 16px; }
 .eg-map-viewport {
     position: relative;
     width: 100%;
-    height: clamp(330px, 48vw, 510px);
+    height: clamp(330px, 44vw, 480px);
     overflow: hidden;
     background: #0d1711;
     touch-action: none;
@@ -1527,8 +1527,8 @@ h2 { margin: 10px 0 16px; }
 }
 .eg-relic {
     position: absolute;
-    width: 145px;
-    height: 145px;
+    width: 290px;
+    height: 290px;
     padding: 8px;
     border: 0;
     background: transparent;
@@ -1729,7 +1729,7 @@ h2 { margin: 10px 0 16px; }
     .eg-hunt-toolbar { align-items:flex-start; flex-direction:column; }
     .eg-hunt-controls { align-self:flex-end; }
     .eg-map-viewport { height:330px; }
-    .eg-relic { width:132px; height:132px; }
+    .eg-relic { width:264px; height:264px; }
 }
 
 @media (max-width:760px) {
@@ -4253,19 +4253,19 @@ EG_MINIGAME_SCRIPT = r"""
             kind: "gray",
             top: "Information de joueur obtenue !",
             middle: "Legodingo13",
-            message: "Sur T j'ai le Top1 Mondial en âge Colonial depuis le 18/10/2025 !"
+            message: "Sur T, j'ai le Top 1 mondial en âge colonial depuis le 18/10/2025 !"
         },
         {
             kind: "gray",
             top: "Information de joueur obtenue !",
             middle: "Legodingo13",
-            message: "Ma ville sur B est une ville 100% ADB qui figure dans le Top20 Mondial des plus grosses villes ADB !"
+            message: "Ma ville sur B est une ville 100 % ADB qui figure dans le Top 20 mondial des plus grosses villes ADB !"
         },
         {
             kind: "gray",
             top: "Information de joueur obtenue !",
             middle: "Legodingo13",
-            message: "Ma ville sur P est composée à 50% de décorations. (Les arbres de l'amour c'est un appel à l'aide mdr)"
+            message: "Ma ville sur P est composée à 50 % de décorations. (Les arbres de l'amour, c'est un appel à l'aide, mdr.)"
         },
         {
             kind: "gold",
@@ -4283,13 +4283,13 @@ EG_MINIGAME_SCRIPT = r"""
             kind: "gold",
             top: "Information de guilde obtenue !",
             middle: "Les Potes Âgés",
-            message: "La guilde \"Les Potes Âgés\" de Y a été créée à la création de Y. C'est la deuxième guilde de Y à avoir atteint en premier les 80 membres."
+            message: "La guilde \"Les Potes Âgés\" de Y a été créée à la création de Y. C'est la deuxième guilde de Y à avoir atteint les 80 membres."
         },
         {
             kind: "jade",
             top: "Information inhabituelle obtenue !",
             middle: "On se met au sport !",
-            message: "Routine sportive FOE pour les multimondes : faire 4 à 10 pompes en fonction de son niveau à chaque fois qu'on change de monde sur FOE"
+            message: "Routine sportive FOE pour les multimondes : faire 4 à 10 pompes en fonction de son niveau à chaque fois qu'on change de monde sur FOE."
         }
     ];
 
@@ -4388,11 +4388,15 @@ EG_MINIGAME_SCRIPT = r"""
     }
 
     function setInitialView() {
+        /*
+           Point de départ demandé : zoom 40 % et coin supérieur gauche de la map.
+           minScale reste calculé pour empêcher tout dézoom qui ferait apparaître une zone vide.
+        */
         minScale = Math.max(viewport.clientWidth / MAP_W, viewport.clientHeight / MAP_H);
         maxScale = Math.max(1.6, minScale * 4);
-        scale = minScale;
-        tx = (viewport.clientWidth - MAP_W * scale) / 2;
-        ty = (viewport.clientHeight - MAP_H * scale) / 2;
+        scale = Math.max(0.40, minScale);
+        tx = 0;
+        ty = 0;
         applyTransform();
     }
 
