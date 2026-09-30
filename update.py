@@ -1447,11 +1447,27 @@ h2 { margin: 10px 0 16px; }
     text-shadow: 0 4px 18px rgba(0,0,0,.52);
 }
 .eg-hunt-subtitle {
-    margin: 0 auto 18px;
+    margin: 0 auto 8px;
     max-width: 820px;
     color: #cbd0d8;
     line-height: 1.55;
     font-size: 14px;
+}
+.eg-hunt-count-row {
+    margin: 0 auto 16px;
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 8px;
+    color: #f1f3f5;
+    font-size: clamp(16px, 2.2vw, 20px);
+    font-weight: 700;
+    text-align: center;
+}
+.eg-hunt-count {
+    color: #ffd493;
+    font-weight: 900;
+    white-space: nowrap;
 }
 .eg-hunt-shell {
     position: relative;
@@ -1463,38 +1479,6 @@ h2 { margin: 10px 0 16px; }
     background: rgba(3,8,8,.85);
     box-shadow: 0 18px 46px rgba(0,0,0,.42);
 }
-.eg-hunt-toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 10px 12px;
-    background: linear-gradient(180deg, rgba(27,29,27,.98), rgba(16,18,17,.96));
-    border-bottom: 1px solid rgba(255,212,147,.16);
-    color: #d8dadd;
-    font-size: 13px;
-    text-align: left;
-}
-.eg-hunt-toolbar-info { min-width: 0; }
-.eg-hunt-count { color: #ffd493; font-weight: 800; white-space: nowrap; }
-.eg-hunt-controls { display:flex; gap:7px; align-items:center; flex:0 0 auto; }
-.eg-hunt-control {
-    width: 38px;
-    height: 34px;
-    padding: 0;
-    border-radius: 9px;
-    border: 1px solid rgba(255,255,255,.14);
-    background: rgba(255,255,255,.075);
-    color: #f4f5f6;
-    font-size: 20px;
-    font-weight: 800;
-    line-height: 1;
-}
-.eg-hunt-control:hover {
-    background: rgba(255,212,147,.13);
-    border-color: rgba(255,212,147,.35);
-}
-.eg-hunt-control.eg-reset-view { width:auto; padding:0 11px; font-size:12px; }
 .eg-map-viewport {
     position: relative;
     width: 100%;
@@ -1503,9 +1487,12 @@ h2 { margin: 10px 0 16px; }
     background: #0d1711;
     touch-action: none;
     user-select: none;
-    cursor: grab !important;
+    cursor: url("cursor_default.cur"), auto !important;
 }
-.eg-map-viewport.dragging { cursor: grabbing !important; }
+.eg-map-viewport.dragging,
+.eg-map-viewport.dragging * {
+    cursor: url("cursor_drag.cur"), move !important;
+}
 .eg-map-world {
     position: absolute;
     left: 0;
@@ -1539,6 +1526,7 @@ h2 { margin: 10px 0 16px; }
     filter: drop-shadow(0 7px 8px rgba(0,0,0,.75));
     transition: transform .14s ease, filter .14s ease, opacity .18s ease;
     z-index: 5;
+    cursor: url("cursor_hover.cur"), pointer !important;
 }
 .eg-relic img {
     display: block;
@@ -1726,8 +1714,6 @@ h2 { margin: 10px 0 16px; }
 }
 
 @media (max-width:760px) {
-    .eg-hunt-toolbar { align-items:flex-start; flex-direction:column; }
-    .eg-hunt-controls { align-self:flex-end; }
     .eg-map-viewport { height:330px; }
     .eg-relic { width:264px; height:264px; }
 }
@@ -4193,18 +4179,11 @@ EG_MINIGAME_MARKUP = r"""
     <p class="eg-hunt-subtitle">
         Explorez la carte de l'Expédition de Guilde, zoomez et déplacez-vous pour retrouver les 8 reliques.
     </p>
+    <div class="eg-hunt-count-row" aria-live="polite">
+        <span>Reliques trouvées :</span>
+        <span class="eg-hunt-count" id="egRelicCounter">0 / 8</span>
+    </div>
     <div class="eg-hunt-shell">
-        <div class="eg-hunt-toolbar">
-            <div class="eg-hunt-toolbar-info">
-                Molette : zoom • Cliquer-glisser : déplacer • Cliquez sur une relique pour découvrir une information.
-            </div>
-            <div class="eg-hunt-controls" aria-label="Contrôles de la carte">
-                <span class="eg-hunt-count" id="egRelicCounter">0 / 8</span>
-                <button type="button" class="eg-hunt-control" id="egZoomOut" aria-label="Dézoomer">−</button>
-                <button type="button" class="eg-hunt-control" id="egZoomIn" aria-label="Zoomer">+</button>
-                <button type="button" class="eg-hunt-control eg-reset-view" id="egResetView">Recentrer</button>
-            </div>
-        </div>
         <div class="eg-map-viewport" id="egMapViewport" aria-label="Carte interactive de l'Expédition de Guilde">
             <div class="eg-map-world" id="egMapWorld">
                 <img src="eg_map.png" alt="Carte de l'Expédition de Guilde" class="eg-map-image" draggable="false">
@@ -4564,15 +4543,6 @@ EG_MINIGAME_SCRIPT = r"""
     viewport.addEventListener("pointerup", endDrag);
     viewport.addEventListener("pointercancel", endDrag);
 
-    document.getElementById("egZoomIn").addEventListener("click", function () {
-        const rect = viewport.getBoundingClientRect();
-        zoomAt(rect.left + rect.width / 2, rect.top + rect.height / 2, 1.22);
-    });
-    document.getElementById("egZoomOut").addEventListener("click", function () {
-        const rect = viewport.getBoundingClientRect();
-        zoomAt(rect.left + rect.width / 2, rect.top + rect.height / 2, .82);
-    });
-    document.getElementById("egResetView").addEventListener("click", setInitialView);
     document.getElementById("egRestart").addEventListener("click", startGame);
     popupContinue.addEventListener("click", closePopup);
 
@@ -4738,6 +4708,7 @@ assets = [
 
     "cursor_default.cur",
     "cursor_hover.cur",
+    "cursor_drag.cur",
     "tableau.png",
 
     # Mini-jeu Expédition de Guilde — chasse aux reliques
