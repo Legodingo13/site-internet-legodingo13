@@ -1429,6 +1429,309 @@ h2 { margin: 10px 0 16px; }
     .tutorial-modal { padding: 21px 18px; }
 }
 
+
+
+/* =========================================================
+   PROFIL — MINI-JEU : CHASSE AUX RELIQUES EG
+   Version intégrée à partir de la mécanique V5 validée.
+   ========================================================= */
+.eg-hunt-section {
+    margin: 54px auto 8px;
+    width: 100%;
+    text-align: center;
+}
+.eg-hunt-title {
+    margin: 0 0 10px;
+    font-size: clamp(25px, 3.6vw, 36px);
+    color: #fff;
+    text-shadow: 0 4px 18px rgba(0,0,0,.52);
+}
+.eg-hunt-subtitle {
+    margin: 0 auto 18px;
+    max-width: 820px;
+    color: #cbd0d8;
+    line-height: 1.55;
+    font-size: 14px;
+}
+.eg-hunt-shell {
+    position: relative;
+    width: 100%;
+    margin: 0 auto;
+    border-radius: 20px;
+    overflow: hidden;
+    border: 1px solid rgba(255,212,147,.24);
+    background: rgba(3,8,8,.85);
+    box-shadow: 0 18px 46px rgba(0,0,0,.42);
+}
+.eg-hunt-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    background: linear-gradient(180deg, rgba(27,29,27,.98), rgba(16,18,17,.96));
+    border-bottom: 1px solid rgba(255,212,147,.16);
+    color: #d8dadd;
+    font-size: 13px;
+    text-align: left;
+}
+.eg-hunt-toolbar-info { min-width: 0; }
+.eg-hunt-count { color: #ffd493; font-weight: 800; white-space: nowrap; }
+.eg-hunt-controls { display:flex; gap:7px; align-items:center; flex:0 0 auto; }
+.eg-hunt-control {
+    width: 38px;
+    height: 34px;
+    padding: 0;
+    border-radius: 9px;
+    border: 1px solid rgba(255,255,255,.14);
+    background: rgba(255,255,255,.075);
+    color: #f4f5f6;
+    font-size: 20px;
+    font-weight: 800;
+    line-height: 1;
+}
+.eg-hunt-control:hover {
+    background: rgba(255,212,147,.13);
+    border-color: rgba(255,212,147,.35);
+}
+.eg-hunt-control.eg-reset-view { width:auto; padding:0 11px; font-size:12px; }
+.eg-map-viewport {
+    position: relative;
+    width: 100%;
+    height: clamp(330px, 48vw, 510px);
+    overflow: hidden;
+    background: #0d1711;
+    touch-action: none;
+    user-select: none;
+    cursor: grab !important;
+}
+.eg-map-viewport.dragging { cursor: grabbing !important; }
+.eg-map-world {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 3000px;
+    height: 1200px;
+    transform-origin: 0 0;
+    will-change: transform;
+}
+.eg-map-image {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 3000px;
+    height: 1200px;
+    object-fit: fill;
+    pointer-events: none;
+    -webkit-user-drag: none;
+}
+.eg-relic {
+    position: absolute;
+    width: 145px;
+    height: 145px;
+    padding: 8px;
+    border: 0;
+    background: transparent;
+    transform: translate(-50%, -50%);
+    transform-origin: 50% 50%;
+    display: grid;
+    place-items: center;
+    filter: drop-shadow(0 7px 8px rgba(0,0,0,.75));
+    transition: transform .14s ease, filter .14s ease, opacity .18s ease;
+    z-index: 5;
+}
+.eg-relic img {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    pointer-events: none;
+}
+.eg-relic:hover,
+.eg-relic:focus-visible {
+    transform: translate(-50%, -50%) scale(1.12);
+    filter: drop-shadow(0 8px 10px rgba(0,0,0,.85)) drop-shadow(0 0 8px rgba(255,222,145,.65));
+    outline: none;
+}
+.eg-relic.collected {
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, -50%) scale(.55);
+}
+.eg-hunt-finished {
+    position: absolute;
+    inset: 0;
+    z-index: 12;
+    display: grid;
+    place-items: center;
+    background: rgba(7,10,8,.30);
+    backdrop-filter: blur(1.5px);
+}
+.eg-hunt-finished[hidden] { display:none; }
+.eg-restart-button {
+    border: 1px solid rgba(255,230,181,.55);
+    border-radius: 14px;
+    padding: 15px 25px;
+    color: #24160b;
+    background: linear-gradient(135deg,#ffd493,#e8a34b);
+    box-shadow: 0 12px 34px rgba(0,0,0,.48);
+    font-size: 18px;
+    font-weight: 900;
+}
+
+/* Popup FOE recomposé uniquement avec les assets officiels récupérés. */
+.eg-popup-overlay {
+    position: fixed;
+    z-index: 20050;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 18px;
+    background: rgba(0,0,0,.70);
+    backdrop-filter: blur(4px);
+}
+.eg-popup-overlay[hidden] { display:none; }
+.foe-popup-root { display:flex; align-items:center; justify-content:center; }
+.foe-popup-shell {
+    --foe-popup-scale: 1;
+    position: relative;
+    width: min(546px, 96vw);
+    aspect-ratio: 546 / 527;
+    filter: drop-shadow(0 24px 34px rgba(0,0,0,.58));
+}
+.foe-popup-canvas {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 546px;
+    height: 527px;
+    transform-origin: 0 0;
+    transform: scale(var(--foe-popup-scale));
+    font-family: Arial, Helvetica, sans-serif;
+    color: #402410;
+}
+.foe-popup-skin {
+    position: absolute;
+    left: 45px;
+    top: 0;
+    width: 456px;
+    height: 462px;
+    user-select: none;
+    pointer-events: none;
+}
+.foe-popup-title {
+    position: absolute;
+    left: 100px;
+    top: 74px;
+    width: 346px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-align: center;
+    color: #f3d6a0;
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: 700;
+    font-size: 21px;
+    line-height: 1;
+    text-shadow: 0 1px 0 #3a1508, 0 1px 3px rgba(0,0,0,.70);
+}
+.foe-popup-logo-box {
+    position: absolute;
+    left: 195px;
+    top: 132px;
+    width: 156px;
+    height: 154px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.foe-popup-logo {
+    display: block;
+    width: auto;
+    height: auto;
+    max-width: 143px;
+    max-height: 143px;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 3px rgba(0,0,0,.25));
+}
+.foe-popup-banner {
+    position: absolute;
+    left: .5px;
+    top: 258px;
+    width: 545px;
+    height: 153px;
+    user-select: none;
+    pointer-events: none;
+}
+.foe-popup-prize {
+    position: absolute;
+    left: 60px;
+    top: 282px;
+    width: 426px;
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: 700;
+    font-size: 22px;
+    line-height: 1;
+    color: #402410;
+    white-space: nowrap;
+}
+.foe-popup-message {
+    position: absolute;
+    left: 90px;
+    top: 347px;
+    width: 366px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: 400;
+    font-size: 13px;
+    line-height: 15px;
+    color: #402410;
+    overflow: hidden;
+}
+.foe-popup-button {
+    position: absolute;
+    left: 207.5px;
+    top: 401px;
+    width: 131px;
+    height: 23px;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    background: url("eg_popup_button.png") center / 100% 100% no-repeat;
+    color: #ffd9c2;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 23px;
+    text-align: center;
+    cursor: url("cursor_hover.cur"), pointer !important;
+    text-shadow: 0 1px 0 #5e2d16;
+}
+.foe-popup-button:focus-visible {
+    outline: 2px solid #ffe0a0;
+    outline-offset: 2px;
+}
+
+@media (max-width:760px) {
+    .eg-hunt-toolbar { align-items:flex-start; flex-direction:column; }
+    .eg-hunt-controls { align-self:flex-end; }
+    .eg-map-viewport { height:330px; }
+    .eg-relic { width:132px; height:132px; }
+}
+
 @media (max-width:760px) {
     body { padding:18px 10px; background-attachment:scroll; }
     .tutorial-carousel-slide { padding: 8px 44px 34px; }
@@ -3878,6 +4181,418 @@ shell(
 tutorial_share_pages = generate_tutorial_share_pages()
 
 
+
+
+# =========================================================
+# PROFIL — MINI-JEU : CHASSE AUX RELIQUES EG
+# =========================================================
+
+EG_MINIGAME_MARKUP = r"""
+<section class="eg-hunt-section" id="egRelicHunt">
+    <h2 class="eg-hunt-title">Chassez les reliques à la recherche d'informations !</h2>
+    <p class="eg-hunt-subtitle">
+        Explorez la carte de l'Expédition de Guilde, zoomez et déplacez-vous pour retrouver les 8 reliques.
+    </p>
+    <div class="eg-hunt-shell">
+        <div class="eg-hunt-toolbar">
+            <div class="eg-hunt-toolbar-info">
+                Molette : zoom • Cliquer-glisser : déplacer • Cliquez sur une relique pour découvrir une information.
+            </div>
+            <div class="eg-hunt-controls" aria-label="Contrôles de la carte">
+                <span class="eg-hunt-count" id="egRelicCounter">0 / 8</span>
+                <button type="button" class="eg-hunt-control" id="egZoomOut" aria-label="Dézoomer">−</button>
+                <button type="button" class="eg-hunt-control" id="egZoomIn" aria-label="Zoomer">+</button>
+                <button type="button" class="eg-hunt-control eg-reset-view" id="egResetView">Recentrer</button>
+            </div>
+        </div>
+        <div class="eg-map-viewport" id="egMapViewport" aria-label="Carte interactive de l'Expédition de Guilde">
+            <div class="eg-map-world" id="egMapWorld">
+                <img src="eg_map.png" alt="Carte de l'Expédition de Guilde" class="eg-map-image" draggable="false">
+                <div id="egRelicLayer"></div>
+            </div>
+            <div class="eg-hunt-finished" id="egHuntFinished" hidden>
+                <button type="button" class="eg-restart-button" id="egRestart">Recommencer</button>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="eg-popup-overlay" id="egPopupOverlay" hidden aria-hidden="true">
+    <div class="foe-popup-root">
+        <div class="foe-popup-shell">
+            <div class="foe-popup-canvas">
+                <img class="foe-popup-skin" src="eg_popup_skin.png" alt="">
+                <div class="foe-popup-title" id="egPopupTitle"></div>
+                <div class="foe-popup-logo-box">
+                    <img class="foe-popup-logo" src="eg_popup_logo.png" alt="Logo Legodingo13">
+                </div>
+                <img class="foe-popup-banner" src="eg_popup_banner.png" alt="">
+                <div class="foe-popup-prize" id="egPopupPrize"></div>
+                <div class="foe-popup-message" id="egPopupMessage"></div>
+                <button type="button" class="foe-popup-button" id="egPopupContinue">Continuer</button>
+            </div>
+        </div>
+    </div>
+</div>
+"""
+
+EG_MINIGAME_SCRIPT = r"""
+<script>
+(function () {
+    const section = document.getElementById("egRelicHunt");
+    if (!section) return;
+
+    const RELICS = [
+        {
+            kind: "gray",
+            top: "Information de joueur obtenue !",
+            middle: "Legodingo13",
+            message: "Vous pouvez me contacter sur n'importe quel monde FR sauf B pour des places 1,9 ou des rushs de GM. N'hésitez pas !"
+        },
+        {
+            kind: "gray",
+            top: "Information de joueur obtenue !",
+            middle: "Legodingo13",
+            message: "Sur T j'ai le Top1 Mondial en âge Colonial depuis le 18/10/2025 !"
+        },
+        {
+            kind: "gray",
+            top: "Information de joueur obtenue !",
+            middle: "Legodingo13",
+            message: "Ma ville sur B est une ville 100% ADB qui figure dans le Top20 Mondial des plus grosses villes ADB !"
+        },
+        {
+            kind: "gray",
+            top: "Information de joueur obtenue !",
+            middle: "Legodingo13",
+            message: "Ma ville sur P est composée à 50% de décorations. (Les arbres de l'amour c'est un appel à l'aide mdr)"
+        },
+        {
+            kind: "gold",
+            top: "Information de guilde obtenue !",
+            middle: "Les Potes Âgés",
+            message: "La guilde \"Les Potes Âgés\" existe sur 3 mondes : sur T, A et Y. On recrute !"
+        },
+        {
+            kind: "gold",
+            top: "Information de guilde obtenue !",
+            middle: "Les Cas Potes",
+            message: "La guilde \"Les Cas Potes\" de B recrute ! On accepte tous les niveaux, même les plus débutants !"
+        },
+        {
+            kind: "gold",
+            top: "Information de guilde obtenue !",
+            middle: "Les Potes Âgés",
+            message: "La guilde \"Les Potes Âgés\" de Y a été créée à la création de Y. C'est la deuxième guilde de Y à avoir atteint en premier les 80 membres."
+        },
+        {
+            kind: "jade",
+            top: "Information inhabituelle obtenue !",
+            middle: "On se met au sport !",
+            message: "Routine sportive FOE pour les multimondes : faire 4 à 10 pompes en fonction de son niveau à chaque fois qu'on change de monde sur FOE"
+        }
+    ];
+
+    const POSITIONS = [
+        { id:0, x:363,  y:265  },
+        { id:1, x:480,  y:553  },
+        { id:2, x:1038, y:532  },
+        { id:3, x:1098, y:758  },
+        { id:4, x:486,  y:822  },
+        { id:5, x:1884, y:522  },
+        { id:6, x:1971, y:906  },
+        { id:7, x:2655, y:970  },
+        { id:8, x:2388, y:474  },
+        { id:9, x:2841, y:352  }
+    ];
+
+    const KIND_IMAGE = {
+        gray: "relique_grise.png",
+        gold: "relique_or.png",
+        jade: "relique_jade.png"
+    };
+    const KIND_LABEL = {
+        gray: "Relique grise",
+        gold: "Relique or",
+        jade: "Relique jade"
+    };
+
+    const MAP_W = 3000;
+    const MAP_H = 1200;
+
+    const viewport = document.getElementById("egMapViewport");
+    const world = document.getElementById("egMapWorld");
+    const layer = document.getElementById("egRelicLayer");
+    const counter = document.getElementById("egRelicCounter");
+    const finished = document.getElementById("egHuntFinished");
+    const popupOverlay = document.getElementById("egPopupOverlay");
+    const popupTitle = document.getElementById("egPopupTitle");
+    const popupPrize = document.getElementById("egPopupPrize");
+    const popupMessage = document.getElementById("egPopupMessage");
+    const popupContinue = document.getElementById("egPopupContinue");
+    const popupShell = popupOverlay.querySelector(".foe-popup-shell");
+
+    /* Le popup est déplacé à la fin du body pour ne pas être limité par overflow:hidden de la carte principale. */
+    document.body.appendChild(popupOverlay);
+
+    let scale = 1;
+    let minScale = .2;
+    let maxScale = 1.7;
+    let tx = 0;
+    let ty = 0;
+    let dragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let startTx = 0;
+    let startTy = 0;
+    let collected = 0;
+    let acknowledged = 0;
+    let activeRelic = null;
+
+    function shuffle(array) {
+        const copy = array.slice();
+        for (let index = copy.length - 1; index > 0; index -= 1) {
+            const other = Math.floor(Math.random() * (index + 1));
+            [copy[index], copy[other]] = [copy[other], copy[index]];
+        }
+        return copy;
+    }
+
+    function applyTransform() {
+        clampPan();
+        world.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+    }
+
+    /*
+       IMPORTANT : aucune zone vide ne peut dépasser les limites de la map.
+       - Si la map est plus grande que le viewport, elle reste entre 0 et viewport-map.
+       - Si un axe tient entièrement dans le viewport, il est simplement centré.
+    */
+    function clampPan() {
+        const viewportWidth = viewport.clientWidth;
+        const viewportHeight = viewport.clientHeight;
+        const mapWidth = MAP_W * scale;
+        const mapHeight = MAP_H * scale;
+
+        if (mapWidth <= viewportWidth) {
+            tx = (viewportWidth - mapWidth) / 2;
+        } else {
+            tx = Math.min(0, Math.max(viewportWidth - mapWidth, tx));
+        }
+
+        if (mapHeight <= viewportHeight) {
+            ty = (viewportHeight - mapHeight) / 2;
+        } else {
+            ty = Math.min(0, Math.max(viewportHeight - mapHeight, ty));
+        }
+    }
+
+    function setInitialView() {
+        minScale = Math.max(viewport.clientWidth / MAP_W, viewport.clientHeight / MAP_H);
+        maxScale = Math.max(1.6, minScale * 4);
+        scale = minScale;
+        tx = (viewport.clientWidth - MAP_W * scale) / 2;
+        ty = (viewport.clientHeight - MAP_H * scale) / 2;
+        applyTransform();
+    }
+
+    function zoomAt(clientX, clientY, factor) {
+        const rect = viewport.getBoundingClientRect();
+        const pointX = clientX - rect.left;
+        const pointY = clientY - rect.top;
+        const worldX = (pointX - tx) / scale;
+        const worldY = (pointY - ty) / scale;
+        const nextScale = Math.max(minScale, Math.min(maxScale, scale * factor));
+
+        tx = pointX - worldX * nextScale;
+        ty = pointY - worldY * nextScale;
+        scale = nextScale;
+        applyTransform();
+    }
+
+    function fitPopupTextOneLine(element, maximumSize, minimumSize) {
+        let size = maximumSize;
+        element.style.fontSize = size + "px";
+        while (size > minimumSize && element.scrollWidth > element.clientWidth) {
+            size -= 1;
+            element.style.fontSize = size + "px";
+        }
+    }
+
+    function fitPopupMessage() {
+        let size = 13;
+        popupMessage.style.fontSize = size + "px";
+        popupMessage.style.lineHeight = "15px";
+        while (size > 10 && popupMessage.scrollHeight > popupMessage.clientHeight) {
+            size -= 1;
+            popupMessage.style.fontSize = size + "px";
+            popupMessage.style.lineHeight = Math.max(size + 2, 13) + "px";
+        }
+    }
+
+    function scalePopup() {
+        if (!popupShell) return;
+        const popupScale = popupShell.clientWidth / 546;
+        popupShell.style.setProperty("--foe-popup-scale", popupScale);
+    }
+
+    function updateCounter() {
+        counter.textContent = `${collected} / ${RELICS.length}`;
+    }
+
+    function maybeFinish() {
+        if (collected === RELICS.length && acknowledged === RELICS.length && popupOverlay.hidden) {
+            finished.hidden = false;
+        }
+    }
+
+    function showPopup(relic) {
+        activeRelic = relic;
+        popupTitle.textContent = relic.top;
+        popupPrize.textContent = relic.middle;
+        popupMessage.textContent = relic.message;
+
+        popupTitle.style.fontSize = "21px";
+        popupPrize.style.fontSize = "22px";
+        popupMessage.style.fontSize = "13px";
+        popupMessage.style.lineHeight = "15px";
+
+        popupOverlay.hidden = false;
+        popupOverlay.setAttribute("aria-hidden", "false");
+
+        requestAnimationFrame(function () {
+            fitPopupTextOneLine(popupTitle, 21, 13);
+            fitPopupTextOneLine(popupPrize, 22, 14);
+            fitPopupMessage();
+            scalePopup();
+            popupContinue.focus();
+        });
+    }
+
+    function closePopup() {
+        if (popupOverlay.hidden) return;
+        popupOverlay.hidden = true;
+        popupOverlay.setAttribute("aria-hidden", "true");
+        if (activeRelic && !activeRelic.acknowledged) {
+            activeRelic.acknowledged = true;
+            acknowledged += 1;
+        }
+        activeRelic = null;
+        maybeFinish();
+    }
+
+    function startGame() {
+        collected = 0;
+        acknowledged = 0;
+        activeRelic = null;
+        updateCounter();
+        finished.hidden = true;
+        popupOverlay.hidden = true;
+        popupOverlay.setAttribute("aria-hidden", "true");
+        layer.innerHTML = "";
+
+        const selectedPositions = shuffle(POSITIONS).slice(0, RELICS.length);
+        const relics = shuffle(RELICS.map(function (relic, index) {
+            return { ...relic, uid:index, acknowledged:false };
+        }));
+
+        relics.forEach(function (relic, index) {
+            const position = selectedPositions[index];
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "eg-relic";
+            button.style.left = position.x + "px";
+            button.style.top = position.y + "px";
+            button.setAttribute("aria-label", KIND_LABEL[relic.kind] + " — découvrir une information");
+
+            const image = document.createElement("img");
+            image.src = KIND_IMAGE[relic.kind];
+            image.alt = "";
+            image.draggable = false;
+            button.appendChild(image);
+
+            button.addEventListener("pointerdown", function (event) {
+                event.stopPropagation();
+            });
+            button.addEventListener("click", function () {
+                if (button.classList.contains("collected")) return;
+                button.classList.add("collected");
+                collected += 1;
+                updateCounter();
+                showPopup(relic);
+            });
+            layer.appendChild(button);
+        });
+
+        setInitialView();
+    }
+
+    viewport.addEventListener("wheel", function (event) {
+        event.preventDefault();
+        zoomAt(event.clientX, event.clientY, event.deltaY < 0 ? 1.13 : .885);
+    }, { passive:false });
+
+    viewport.addEventListener("pointerdown", function (event) {
+        if (event.target.closest(".eg-relic") || event.target.closest(".eg-restart-button")) return;
+        dragging = true;
+        viewport.classList.add("dragging");
+        viewport.setPointerCapture(event.pointerId);
+        dragStartX = event.clientX;
+        dragStartY = event.clientY;
+        startTx = tx;
+        startTy = ty;
+    });
+
+    viewport.addEventListener("pointermove", function (event) {
+        if (!dragging) return;
+        tx = startTx + (event.clientX - dragStartX);
+        ty = startTy + (event.clientY - dragStartY);
+        applyTransform();
+    });
+
+    function endDrag(event) {
+        if (!dragging) return;
+        dragging = false;
+        viewport.classList.remove("dragging");
+        try { viewport.releasePointerCapture(event.pointerId); } catch (error) {}
+    }
+
+    viewport.addEventListener("pointerup", endDrag);
+    viewport.addEventListener("pointercancel", endDrag);
+
+    document.getElementById("egZoomIn").addEventListener("click", function () {
+        const rect = viewport.getBoundingClientRect();
+        zoomAt(rect.left + rect.width / 2, rect.top + rect.height / 2, 1.22);
+    });
+    document.getElementById("egZoomOut").addEventListener("click", function () {
+        const rect = viewport.getBoundingClientRect();
+        zoomAt(rect.left + rect.width / 2, rect.top + rect.height / 2, .82);
+    });
+    document.getElementById("egResetView").addEventListener("click", setInitialView);
+    document.getElementById("egRestart").addEventListener("click", startGame);
+    popupContinue.addEventListener("click", closePopup);
+
+    window.addEventListener("keydown", function (event) {
+        if (event.key === "Escape" && !popupOverlay.hidden) closePopup();
+    });
+
+    if (window.ResizeObserver) {
+        new ResizeObserver(function () {
+            scalePopup();
+        }).observe(popupShell);
+    }
+
+    window.addEventListener("resize", function () {
+        setInitialView();
+        scalePopup();
+    });
+
+    startGame();
+    scalePopup();
+})();
+</script>
+"""
+
 # PROFIL = TABLEAU EXCEL
 if os.path.exists("tableau.png"):
     profil_tableau_view = """
@@ -3903,6 +4618,8 @@ version publiée depuis l'application Legodingo13 Bot4. Enregistre le fichier Ex
 d'ouvrir l'application pour publier les dernières modifications.
 </p>
 {profil_tableau_view}
+{EG_MINIGAME_MARKUP}
+{EG_MINIGAME_SCRIPT}
 """
 shell(
     "profil.html",
@@ -4018,6 +4735,16 @@ assets = [
     "cursor_default.cur",
     "cursor_hover.cur",
     "tableau.png",
+
+    # Mini-jeu Expédition de Guilde — chasse aux reliques
+    "eg_map.png",
+    "relique_grise.png",
+    "relique_or.png",
+    "relique_jade.png",
+    "eg_popup_skin.png",
+    "eg_popup_banner.png",
+    "eg_popup_button.png",
+    "eg_popup_logo.png",
 ]
 
 for asset in assets:
