@@ -1514,8 +1514,8 @@ h2 { margin: 10px 0 16px; }
 }
 .eg-relic {
     position: absolute;
-    width: 290px;
-    height: 290px;
+    width: 580px;
+    height: 580px;
     padding: 8px;
     border: 0;
     background: transparent;
@@ -1715,7 +1715,7 @@ h2 { margin: 10px 0 16px; }
 
 @media (max-width:760px) {
     .eg-map-viewport { height:330px; }
-    .eg-relic { width:264px; height:264px; }
+    .eg-relic { width:528px; height:528px; }
 }
 
 @media (max-width:760px) {
@@ -4327,6 +4327,14 @@ EG_MINIGAME_SCRIPT = r"""
     let collected = 0;
     let acknowledged = 0;
     let activeRelic = null;
+    let pinchActive = false;
+    let pinchStartDistance = 0;
+    let pinchStartScale = 1;
+    let pinchStartTx = 0;
+    let pinchStartTy = 0;
+    let pinchStartMidX = 0;
+    let pinchStartMidY = 0;
+    const activePointers = new Map();
 
     function shuffle(array) {
         const copy = array.slice();
@@ -4389,6 +4397,51 @@ EG_MINIGAME_SCRIPT = r"""
 
         tx = pointX - worldX * nextScale;
         ty = pointY - worldY * nextScale;
+        scale = nextScale;
+        applyTransform();
+    }
+
+    function pointerDistanceAndMidpoint() {
+        const pointers = Array.from(activePointers.values());
+        if (pointers.length < 2) return null;
+        const first = pointers[0];
+        const second = pointers[1];
+        const dx = second.clientX - first.clientX;
+        const dy = second.clientY - first.clientY;
+        return {
+            distance: Math.hypot(dx, dy),
+            midX: (first.clientX + second.clientX) / 2,
+            midY: (first.clientY + second.clientY) / 2
+        };
+    }
+
+    function beginPinch() {
+        const info = pointerDistanceAndMidpoint();
+        if (!info) return;
+        pinchActive = true;
+        dragging = false;
+        viewport.classList.remove("dragging");
+        pinchStartDistance = Math.max(10, info.distance);
+        pinchStartScale = scale;
+        pinchStartTx = tx;
+        pinchStartTy = ty;
+        pinchStartMidX = info.midX;
+        pinchStartMidY = info.midY;
+    }
+
+    function updatePinch() {
+        const info = pointerDistanceAndMidpoint();
+        if (!info) return;
+        const rect = viewport.getBoundingClientRect();
+        const startPointX = pinchStartMidX - rect.left;
+        const startPointY = pinchStartMidY - rect.top;
+        const worldX = (startPointX - pinchStartTx) / pinchStartScale;
+        const worldY = (startPointY - pinchStartTy) / pinchStartScale;
+        const nextScale = Math.max(minScale, Math.min(maxScale, pinchStartScale * (info.distance / pinchStartDistance)));
+        const currentPointX = info.midX - rect.left;
+        const currentPointY = info.midY - rect.top;
+        tx = currentPointX - worldX * nextScale;
+        ty = currentPointY - worldY * nextScale;
         scale = nextScale;
         applyTransform();
     }
@@ -4517,6 +4570,18 @@ EG_MINIGAME_SCRIPT = r"""
 
     viewport.addEventListener("pointerdown", function (event) {
         if (event.target.closest(".eg-relic") || event.target.closest(".eg-restart-button")) return;
+
+        if (event.pointerType !== "mouse") {
+            activePointers.set(event.pointerId, { clientX: event.clientX, clientY: event.clientY });
+            if (activePointers.size >= 2) {
+                beginPinch();
+                return;
+            }
+        }
+
+        if (event.pointerType === "mouse" && event.button !== 0) return;
+        if (pinchActive) return;
+
         dragging = true;
         viewport.classList.add("dragging");
         viewport.setPointerCapture(event.pointerId);
@@ -4527,6 +4592,15 @@ EG_MINIGAME_SCRIPT = r"""
     });
 
     viewport.addEventListener("pointermove", function (event) {
+        if (event.pointerType !== "mouse" && activePointers.has(event.pointerId)) {
+            activePointers.set(event.pointerId, { clientX: event.clientX, clientY: event.clientY });
+        }
+
+        if (pinchActive) {
+            updatePinch();
+            return;
+        }
+
         if (!dragging) return;
         tx = startTx + (event.clientX - dragStartX);
         ty = startTy + (event.clientY - dragStartY);
@@ -4534,6 +4608,11 @@ EG_MINIGAME_SCRIPT = r"""
     });
 
     function endDrag(event) {
+        if (event.pointerType !== "mouse") {
+            activePointers.delete(event.pointerId);
+            if (activePointers.size < 2) pinchActive = false;
+        }
+
         if (!dragging) return;
         dragging = false;
         viewport.classList.remove("dragging");
@@ -4542,6 +4621,10 @@ EG_MINIGAME_SCRIPT = r"""
 
     viewport.addEventListener("pointerup", endDrag);
     viewport.addEventListener("pointercancel", endDrag);
+    viewport.addEventListener("pointerleave", function (event) {
+        if (event.pointerType !== "mouse") return;
+        endDrag(event);
+    });
 
     document.getElementById("egRestart").addEventListener("click", startGame);
     popupContinue.addEventListener("click", closePopup);
