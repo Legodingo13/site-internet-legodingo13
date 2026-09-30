@@ -1514,8 +1514,8 @@ h2 { margin: 10px 0 16px; }
 }
 .eg-relic {
     position: absolute;
-    width: 150px;
-    height: 150px;
+    width: 75px;
+    height: 75px;
     padding: 0;
     border: 0;
     background: transparent;
@@ -1714,7 +1714,7 @@ h2 { margin: 10px 0 16px; }
 
 @media (max-width:760px) {
     .eg-map-viewport { height:330px; }
-    .eg-relic { width:138px; height:138px; }
+    .eg-relic { width:69px; height:69px; }
 }
 
 @media (max-width:760px) {
