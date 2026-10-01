@@ -3645,13 +3645,39 @@ def tutorial_share_slug(menu):
 
 
 def plain_text_from_tutorial_html(value):
+    """Convertit le HTML d'un tutoriel en texte utilisable dans Open Graph.
+
+    Les emojis personnalisés de l'éditeur sont des images (<img class="tutorial-inline-emoji">).
+    Une description Open Graph étant du texte brut, Discord ne peut pas afficher ces images :
+    on retire donc ces balises au lieu d'exposer leur nom de fichier dans l'aperçu.
+    Les emojis Unicode natifs restent du texte et sont conservés normalement.
+    """
     text = str(value or "")
-    text = re.sub(
-        r'<img[^>]*\balt=["\']([^"\']*)["\'][^>]*>',
-        lambda match: " " + html.unescape(match.group(1)) + " ",
-        text,
-        flags=re.IGNORECASE,
-    )
+
+    def replace_image(match):
+        tag = match.group(0)
+
+        # Emoji personnalisé = image. Le nom du fichier présent dans alt ne doit jamais
+        # se retrouver dans og:description / twitter:description.
+        if re.search(r'\bclass=["\'][^"\']*\btutorial-inline-emoji\b[^"\']*["\']', tag, flags=re.IGNORECASE):
+            return " "
+
+        alt_match = re.search(r'\balt=["\']([^"\']*)["\']', tag, flags=re.IGNORECASE)
+        if not alt_match:
+            return " "
+
+        alt = html.unescape(alt_match.group(1)).strip()
+        if not alt:
+            return " "
+
+        # Sécurité supplémentaire : ne jamais afficher un nom de fichier image comme texte
+        # dans un aperçu Discord, même si la classe de l'emoji a disparu d'un ancien contenu.
+        if re.search(r'\.(?:png|jpe?g|gif|webp|svg|avif|bmp|ico)(?:$|[?#])', alt, flags=re.IGNORECASE):
+            return " "
+
+        return " " + alt + " "
+
+    text = re.sub(r"<img\b[^>]*>", replace_image, text, flags=re.IGNORECASE)
     text = re.sub(r"<[^>]+>", " ", text)
     text = html.unescape(text)
     text = re.sub(r"\(([^()\[\]\n]{1,200})\)\[(https?://[^\]\s]+)\]", r"\1", text)
