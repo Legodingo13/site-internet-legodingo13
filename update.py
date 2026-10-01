@@ -1958,6 +1958,13 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
         return JSON.stringify(tutorialData) !== savedDataSnapshot;
     }
 
+    function sanitizeShareDescriptionValue(value) {
+        return String(value || "")
+            .replace(/(?:^|\s)(?:[^\s<>"'\\/]+[\\/])*[A-Za-z0-9][A-Za-z0-9._-]*\.(?:png|jpe?g|gif|webp|svg|avif|bmp|ico)(?:[?#][^\s<>]*)?(?=\s|$)/gi, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+    }
+
     function normalizeData(data) {
         if (!data || typeof data !== "object") data = {};
         if (!Array.isArray(data.menus)) data.menus = [];
@@ -1970,6 +1977,7 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
             if (typeof menu.updatedAt !== "string") menu.updatedAt = "";
             if (typeof menu.shareTitle !== "string") menu.shareTitle = "";
             if (typeof menu.shareDescription !== "string") menu.shareDescription = "";
+            menu.shareDescription = sanitizeShareDescriptionValue(menu.shareDescription);
             if (typeof menu.shareImage !== "string" || !menu.shareImage.startsWith("data:image/")) menu.shareImage = "";
             if (!Array.isArray(menu.blocks)) menu.blocks = [];
             menu.blocks.forEach(block => {
@@ -2192,6 +2200,19 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
         return slugifyTutorialTitle(menu?.title || "tutoriel") + (suffix ? "-" + suffix : "");
     }
 
+    function tutorialShareVersion(menu) {
+        const raw = String(menu?.updatedAt || "").trim();
+        if (!raw) return "1";
+        const date = new Date(raw);
+        if (!Number.isNaN(date.getTime())) return String(date.getTime());
+        return raw.replace(/[^0-9A-Za-z_-]+/g, "").slice(0, 32) || "1";
+    }
+
+    function tutorialShareUrl(menu) {
+        const anchor = menuAnchor(menu);
+        return SHARE_BASE_URL + encodeURIComponent(anchor) + ".html?v=" + encodeURIComponent(tutorialShareVersion(menu));
+    }
+
     function ensureUniqueMenuSlugs(menus) {
         const used = new Set();
         (menus || []).forEach(menu => {
@@ -2296,7 +2317,7 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
             const isOpen = menu.id === openMenuId;
             const blocks = menu.blocks.map(renderPublicBlock).join("");
             const anchor = menuAnchor(menu);
-            const shareUrl = SHARE_BASE_URL + encodeURIComponent(anchor) + ".html";
+            const shareUrl = tutorialShareUrl(menu);
             const updatedLabel = formatTutorialDate(menu.updatedAt);
             const updatedHtml = updatedLabel ? `<div class="tutorial-menu-updated">Dernière mise à jour : ${escapeHtml(updatedLabel)}</div>` : "";
             return `<section id="${escapeHtml(anchor)}" class="tutorial-menu${isOpen ? " open" : ""}" data-menu-id="${escapeHtml(menu.id)}">
@@ -2513,7 +2534,7 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
                 const section = link.closest(".tutorial-menu");
                 if (!section) return;
                 const anchor = section.id;
-                const directUrl = link.href || (SHARE_BASE_URL + encodeURIComponent(anchor) + ".html");
+                const directUrl = link.href || tutorialShareUrl(tutorialData.menus.find(menu => menuAnchor(menu) === anchor) || {});
 
                 const copied = await copyTextToClipboard(directUrl);
                 showCopyToast(copied ? "Lien du tutoriel copié dans le presse-papiers." : "Impossible de copier automatiquement le lien.");
@@ -3680,6 +3701,17 @@ def plain_text_from_tutorial_html(value):
     text = re.sub(r"<img\b[^>]*>", replace_image, text, flags=re.IGNORECASE)
     text = re.sub(r"<[^>]+>", " ", text)
     text = html.unescape(text)
+
+    # Certains anciens contenus/anciennes descriptions ont déjà transformé l'emoji
+    # en simple nom de fichier. On retire donc aussi ces noms lorsqu'ils sont déjà
+    # présents sous forme de texte brut (ex. achievement_icons_xxx.png).
+    text = re.sub(
+        r"(?<![\w.-])(?:[^\s<>\"'/]+[\\/])*[A-Za-z0-9][A-Za-z0-9._-]*\.(?:png|jpe?g|gif|webp|svg|avif|bmp|ico)(?:[?#][^\s<>]*)?",
+        " ",
+        text,
+        flags=re.IGNORECASE,
+    )
+
     text = re.sub(r"\(([^()\[\]\n]{1,200})\)\[(https?://[^\]\s]+)\]", r"\1", text)
     return re.sub(r"\s+", " ", text).strip()
 
@@ -3695,7 +3727,12 @@ def trim_share_description(value, limit=240):
 def automatic_tutorial_description(menu):
     manual = str((menu or {}).get("shareDescription", "") or "").strip()
     if manual:
-        return trim_share_description(manual)
+        # IMPORTANT : une description personnalisée pouvait contenir un ancien nom
+        # de fichier d'emoji. Elle doit être nettoyée exactement comme le texte
+        # automatique avant d'être exposée à Discord/Open Graph.
+        cleaned_manual = plain_text_from_tutorial_html(manual)
+        if cleaned_manual:
+            return trim_share_description(cleaned_manual)
 
     for block in (menu or {}).get("blocks", []) or []:
         if isinstance(block, dict) and block.get("type") == "text":
@@ -3759,6 +3796,15 @@ def export_data_image(data_url, slug):
     return relative
 
 
+def tutorial_share_version(menu):
+    """Version stable par mise à jour pour forcer Discord à relire les métadonnées."""
+    raw = str((menu or {}).get("updatedAt", "") or "").strip()
+    if not raw:
+        return "1"
+    cleaned = re.sub(r"[^0-9A-Za-z_-]+", "", raw)[:32]
+    return cleaned or "1"
+
+
 def generate_tutorial_share_pages():
     """Crée une URL partageable /t/<slug>.html par tutoriel avec Open Graph."""
     data_path = "tutoriels-data.json"
@@ -3799,7 +3845,10 @@ def generate_tutorial_share_pages():
         description = automatic_tutorial_description(menu)
         target_anchor = quote(slug, safe="-._~")
         target_url = SITE_BASE + "tutoriels.html#" + target_anchor
-        share_url = SITE_BASE + "t/" + quote(filename_slug, safe="-._~") + ".html"
+        share_url = (
+            SITE_BASE + "t/" + quote(filename_slug, safe="-._~") + ".html"
+            + "?v=" + quote(tutorial_share_version(menu), safe="-._~")
+        )
 
         image_data = automatic_tutorial_image_data(menu)
         image_relative = export_data_image(image_data, filename_slug) if image_data else None
