@@ -1423,6 +1423,59 @@ h2 { margin: 10px 0 16px; }
 }
 .error-actions a { min-width: 180px; }
 
+
+
+/* Bouton flottant — retour en haut de page */
+.back-to-top {
+    position: fixed;
+    right: max(20px, env(safe-area-inset-right));
+    bottom: max(20px, env(safe-area-inset-bottom));
+    z-index: 9000;
+    width: 50px;
+    height: 50px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border-radius: 15px;
+    border: 1px solid rgba(255,210,130,.42);
+    background: linear-gradient(145deg, rgba(29,32,42,.94), rgba(47,30,22,.94));
+    color: #ffd493;
+    box-shadow: 0 10px 28px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.06);
+    backdrop-filter: blur(8px);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(10px) scale(.94);
+    transition: opacity .18s ease, visibility .18s ease, transform .18s ease, background .18s ease, border-color .18s ease;
+    cursor: url("cursor_hover.cur"), pointer !important;
+}
+.back-to-top.visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateY(0) scale(1);
+}
+.back-to-top:hover,
+.back-to-top:focus-visible {
+    background: linear-gradient(145deg, rgba(48,51,62,.98), rgba(64,40,25,.98));
+    border-color: rgba(255,210,130,.78);
+    transform: translateY(-2px) scale(1.03);
+}
+.back-to-top:focus-visible {
+    outline: 3px solid rgba(255,212,147,.45);
+    outline-offset: 3px;
+}
+.back-to-top svg {
+    width: 24px;
+    height: 24px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    pointer-events: none;
+}
+
 @media (max-width:760px) {
     .tutorial-menu-header { font-size: 16px; }
     .tutorial-admin-toolbar button { flex: 1 1 calc(50% - 9px); }
@@ -1713,6 +1766,13 @@ h2 { margin: 10px 0 16px; }
 }
 
 @media (max-width:760px) {
+    .back-to-top {
+        right: max(14px, env(safe-area-inset-right));
+        bottom: max(14px, env(safe-area-inset-bottom));
+        width: 46px;
+        height: 46px;
+        border-radius: 14px;
+    }
     .eg-map-viewport { height:330px; }
     .eg-relic { width:69px; height:69px; }
 }
@@ -1881,6 +1941,39 @@ SCRIPT = r"""
 
     updateViewCounter();
 })();
+
+(function () {
+    const button = document.getElementById("backToTop");
+    if (!button) return;
+
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let ticking = false;
+
+    function updateVisibility() {
+        const shouldShow = window.scrollY > 420;
+        button.classList.toggle("visible", shouldShow);
+        button.tabIndex = shouldShow ? 0 : -1;
+        button.setAttribute("aria-hidden", shouldShow ? "false" : "true");
+        ticking = false;
+    }
+
+    window.addEventListener("scroll", function () {
+        if (ticking) return;
+        ticking = true;
+        window.requestAnimationFrame(updateVisibility);
+    }, { passive: true });
+
+    button.addEventListener("click", function () {
+        window.scrollTo({
+            top: 0,
+            left: 0,
+            behavior: reduceMotion.matches ? "auto" : "smooth"
+        });
+    });
+
+    updateVisibility();
+})();
+
 </script>
 """
 
@@ -3642,6 +3735,11 @@ def shell(filename, active, title, description, body, robots="index, follow", og
 </footer>
 </section>
 </main>
+<button type="button" class="back-to-top" id="backToTop" aria-label="Remonter en haut de la page" title="Remonter en haut">
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M6 15l6-6 6 6"></path>
+    </svg>
+</button>
 {SCRIPT}
 </body>
 </html>"""
