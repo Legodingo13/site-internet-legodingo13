@@ -2090,7 +2090,31 @@ h2 { margin: 10px 0 16px; }
     font-size: 13px;
 }
 .shortcut-modal-close {
-    float: right;
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 2;
+    width: 34px;
+    height: 34px;
+    padding: 5px;
+    margin: 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    display: grid;
+    place-items: center;
+    line-height: 0;
+}
+.shortcut-modal-close img {
+    display: block;
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    pointer-events: none;
+}
+.shortcut-modal-close:focus-visible {
+    outline: 2px solid rgba(255,218,152,.9);
+    outline-offset: 2px;
 }
 
 @media (max-width: 650px) {
@@ -4635,7 +4659,17 @@ Retrouve ici mes liens officiels, puis une sélection de sites, extensions et ch
 
 <div class="shortcut-install-modal" id="shortcutInstallModal" hidden>
     <div class="shortcut-install-dialog" role="dialog" aria-modal="true" aria-labelledby="shortcutInstallTitle">
-        <button type="button" class="secondary-button shortcut-modal-close" id="shortcutInstallClose">Fermer</button>
+        <button
+            type="button"
+            class="shortcut-modal-close"
+            id="shortcutInstallClose"
+            data-foe-arrow
+            data-normal="foe_close_normal.png"
+            data-hover="foe_close_hover.png"
+            data-down="foe_close_press.png"
+            aria-label="Fermer"
+            title="Fermer"
+        ><img src="foe_close_normal.png" alt=""></button>
         <div class="shortcut-install-dialog-head">
             <img src="legodingo13_shortcut_512.png" alt="Icône Legodingo13">
             <div>
@@ -5650,6 +5684,11 @@ assets = [
     "legodingo13_shortcut_512.png",
     "legodingo13_shortcut_192.png",
     "legodingo13_shortcut_180.png",
+
+    # Bouton FOE de fermeture de la fenêtre d'installation
+    "foe_close_normal.png",
+    "foe_close_hover.png",
+    "foe_close_press.png",
 
     # Boutons FOE pour les carrousels d'images et de vidéos
     "foe_carousel_left_normal.png",
