@@ -6,6 +6,7 @@ import shutil
 import re
 import base64
 import unicodedata
+import xml.etree.ElementTree as ET
 from urllib.parse import quote
 from datetime import datetime, timezone
 
@@ -16,10 +17,12 @@ from datetime import datetime, timezone
 
 DISCORD_INVITE = "ujHH2bNzhn"
 YOUTUBE_URL = "https://www.youtube.com/@Legodingo13"
+YOUTUBE_CHANNEL_ID = "UC_1T2zJa_uOU2xNeQHdPutQ"
+YOUTUBE_FEED_URL = f"https://www.youtube.com/feeds/videos.xml?channel_id={YOUTUBE_CHANNEL_ID}"
 SOCIALCOUNTS_URL = (
     "https://socialcounts.org/"
     "youtube-live-subscriber-count/"
-    "UC_1T2zJa_uOU2xNeQHdPutQ"
+    + YOUTUBE_CHANNEL_ID
 )
 FOE_URL = "https://fr0.forgeofempires.com/page/"
 GUNS_URL = "https://guns.lol/legodingo13"
@@ -141,6 +144,55 @@ def get_youtube_subscribers():
     return "indisponible"
 
 
+def get_latest_youtube_videos(limit=4):
+    """Récupère automatiquement les dernières vidéos publiques de la chaîne via le flux RSS YouTube.
+
+    Aucun token ni clé API n'est nécessaire. Le flux est lu au moment où update.py génère le site.
+    En cas d'indisponibilité temporaire de YouTube, la page reste générée sans bloquer le reste du site.
+    """
+    try:
+        request = urllib.request.Request(
+            YOUTUBE_FEED_URL,
+            headers={
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/140.0 Safari/537.36"
+                ),
+                "Accept": "application/atom+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
+            },
+        )
+        with urllib.request.urlopen(request, timeout=20) as response:
+            payload = response.read()
+
+        root = ET.fromstring(payload)
+        namespaces = {
+            "atom": "http://www.w3.org/2005/Atom",
+            "yt": "http://www.youtube.com/xml/schemas/2015",
+        }
+
+        videos = []
+        for entry in root.findall("atom:entry", namespaces):
+            video_id = (entry.findtext("yt:videoId", default="", namespaces=namespaces) or "").strip()
+            title = (entry.findtext("atom:title", default="Vidéo YouTube", namespaces=namespaces) or "Vidéo YouTube").strip()
+            published = (entry.findtext("atom:published", default="", namespaces=namespaces) or "").strip()
+            if not re.fullmatch(r"[A-Za-z0-9_-]{6,20}", video_id):
+                continue
+            videos.append({
+                "id": video_id,
+                "title": title,
+                "published": published,
+                "url": f"https://www.youtube.com/watch?v={video_id}",
+            })
+            if len(videos) >= max(1, int(limit)):
+                break
+        return videos
+    except Exception as error:
+        print("Impossible de lire le flux RSS YouTube :", error)
+        return []
+
+
 # =========================================================
 # STATISTIQUES DISCORD
 # =========================================================
@@ -170,6 +222,7 @@ online_count = format_number(discord_data.get("approximate_presence_count", "inc
 # =========================================================
 
 youtube_subscribers = get_youtube_subscribers()
+youtube_videos = get_latest_youtube_videos(4)
 youtube_display = (
     "Compteur temporairement indisponible"
     if youtube_subscribers == "indisponible"
@@ -298,6 +351,111 @@ h2 { margin: 10px 0 16px; }
     transition: .2s ease;
 }
 .primary-button:hover { transform: translateY(-3px); box-shadow:0 17px 35px rgba(88,101,242,.45); }
+
+.youtube-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+    align-items: stretch;
+    margin: 26px 0 30px;
+}
+.youtube-summary .stat { margin: 0; }
+.youtube-channel-action {
+    margin: 0;
+    min-height: 100%;
+    padding: 30px 20px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    text-decoration: none;
+    color: white;
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1.25;
+    background: linear-gradient(145deg,rgba(255,255,255,.075),rgba(255,255,255,.035));
+    border: 1px solid rgba(255,255,255,.09);
+    transition: transform .2s ease, border-color .2s ease, background .2s ease, box-shadow .2s ease;
+}
+.youtube-channel-action:hover {
+    transform: translateY(-3px);
+    border-color: rgba(255,255,255,.20);
+    background: linear-gradient(145deg,rgba(255,255,255,.105),rgba(255,255,255,.055));
+    box-shadow: 0 16px 34px rgba(0,0,0,.22);
+}
+.youtube-latest {
+    margin: 10px 0 34px;
+    text-align: left;
+}
+.youtube-latest-title {
+    margin: 0 0 7px;
+    text-align: center;
+    font-size: 28px;
+}
+.youtube-latest-subtitle {
+    margin: 0 auto 17px;
+    text-align: center;
+    color: #bfc5cf;
+    font-size: 14px;
+    line-height: 1.55;
+}
+.youtube-carousel {
+    position: relative;
+    padding: 0 64px;
+}
+.youtube-video-track {
+    display: flex;
+    gap: 16px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x pan-y;
+}
+.youtube-video-track::-webkit-scrollbar { display: none; }
+.youtube-video-card {
+    flex: 0 0 calc((100% - 16px) / 2);
+    min-width: 0;
+    scroll-snap-align: start;
+    border-radius: 17px;
+    overflow: hidden;
+    background: rgba(255,255,255,.055);
+    border: 1px solid rgba(255,255,255,.10);
+}
+.youtube-video-frame {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: #000;
+}
+.youtube-video-frame iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+.youtube-video-title {
+    display: block;
+    padding: 12px 14px 14px;
+    color: #f3f5f8;
+    text-decoration: none;
+    font-weight: 700;
+    line-height: 1.35;
+    min-height: 62px;
+}
+.youtube-video-title:hover { color: #ffd493; }
+.youtube-video-empty {
+    padding: 28px;
+    border-radius: 16px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.09);
+    color: #cbd0d8;
+    text-align: center;
+}
+
 .gold-button { background: linear-gradient(135deg,#c47a2b,#f0b45c); color:#1b130d; box-shadow:0 12px 30px rgba(196,122,43,.25); }
 
 .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-top:24px; }
@@ -703,27 +861,41 @@ h2 { margin: 10px 0 16px; }
     object-fit: contain;
     box-shadow: none;
 }
-.tutorial-carousel-arrow {
+.tutorial-carousel-arrow,
+.youtube-carousel-arrow {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
-    z-index: 3;
-    width: 42px;
+    z-index: 5;
+    width: 54px;
     height: 54px;
-    display: grid;
-    place-items: center;
     padding: 0;
-    border-radius: 12px;
-    border: 1px solid rgba(255,255,255,.14);
-    background: rgba(13,15,21,.78);
-    color: white;
-    font-size: 29px;
-    line-height: 1;
-    backdrop-filter: blur(5px);
+    border: 0;
+    border-radius: 50%;
+    background-color: transparent;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    filter: drop-shadow(0 5px 8px rgba(0,0,0,.65));
 }
-.tutorial-carousel-arrow:hover { background: rgba(38,41,52,.94); }
-.tutorial-carousel-prev { left: 10px; }
-.tutorial-carousel-next { right: 10px; }
+.tutorial-carousel-prev,
+.youtube-carousel-prev {
+    left: 10px;
+    background-image: url("foe_carousel_left_normal.png");
+}
+.tutorial-carousel-prev:hover,
+.youtube-carousel-prev:hover { background-image: url("foe_carousel_left_hover.png"); }
+.tutorial-carousel-prev:active,
+.youtube-carousel-prev:active { background-image: url("foe_carousel_left_push.png"); }
+.tutorial-carousel-next,
+.youtube-carousel-next {
+    right: 10px;
+    background-image: url("foe_carousel_right_normal.png");
+}
+.tutorial-carousel-next:hover,
+.youtube-carousel-next:hover { background-image: url("foe_carousel_right_hover.png"); }
+.tutorial-carousel-next:active,
+.youtube-carousel-next:active { background-image: url("foe_carousel_right_push.png"); }
 .tutorial-carousel-position {
     position: absolute;
     left: 50%;
@@ -1779,8 +1951,11 @@ h2 { margin: 10px 0 16px; }
 
 @media (max-width:760px) {
     body { padding:18px 10px; background-attachment:scroll; }
-    .tutorial-carousel-slide { padding: 8px 44px 34px; }
-    .tutorial-carousel-arrow { width: 34px; height: 48px; font-size: 24px; }
+    .tutorial-carousel-slide { padding: 8px 48px 34px; }
+    .tutorial-carousel-arrow, .youtube-carousel-arrow { width: 46px; height: 46px; }
+    .youtube-summary { grid-template-columns: 1fr; gap: 14px; }
+    .youtube-carousel { padding: 0 48px; }
+    .youtube-video-card { flex-basis: 100%; }
     .tutorial-image-admin-head { padding-right: 0; padding-top: 34px; }
     .card { border-radius:20px; }
     .site-head { padding:25px 16px 12px; }
@@ -1972,6 +2147,30 @@ SCRIPT = r"""
     });
 
     updateVisibility();
+})();
+
+(function () {
+    document.querySelectorAll("[data-youtube-carousel]").forEach(function (carousel) {
+        const track = carousel.querySelector("[data-youtube-track]");
+        const previous = carousel.querySelector("[data-youtube-prev]");
+        const next = carousel.querySelector("[data-youtube-next]");
+        if (!track || !previous || !next) return;
+
+        function cardStep() {
+            const card = track.querySelector(".youtube-video-card");
+            if (!card) return track.clientWidth;
+            const styles = window.getComputedStyle(track);
+            const gap = parseFloat(styles.columnGap || styles.gap || "0") || 0;
+            return card.getBoundingClientRect().width + gap;
+        }
+
+        function move(direction) {
+            track.scrollBy({ left: cardStep() * direction, behavior: "smooth" });
+        }
+
+        previous.addEventListener("click", function () { move(-1); });
+        next.addEventListener("click", function () { move(1); });
+    });
 })();
 
 </script>
@@ -2375,8 +2574,8 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
                 }).join("");
                 return `<div class="tutorial-public-block tutorial-carousel" data-carousel data-carousel-current="0">
                     <div class="tutorial-carousel-stage">${slides}</div>
-                    <button type="button" class="tutorial-carousel-arrow tutorial-carousel-prev" data-carousel-prev aria-label="Image précédente">‹</button>
-                    <button type="button" class="tutorial-carousel-arrow tutorial-carousel-next" data-carousel-next aria-label="Image suivante">›</button>
+                    <button type="button" class="tutorial-carousel-arrow tutorial-carousel-prev" data-carousel-prev aria-label="Image précédente" title="Image précédente"></button>
+                    <button type="button" class="tutorial-carousel-arrow tutorial-carousel-next" data-carousel-next aria-label="Image suivante" title="Image suivante"></button>
                     <div class="tutorial-carousel-position"><span data-carousel-position>1</span> / ${images.length}</div>
                 </div>`;
             }
@@ -4200,15 +4399,55 @@ shell(
 
 
 # YOUTUBE
+youtube_video_cards = []
+for video in youtube_videos[:4]:
+    video_id = html.escape(video.get("id", ""), quote=True)
+    video_title = html.escape(video.get("title", "Vidéo YouTube"))
+    video_url = html.escape(video.get("url", YOUTUBE_URL), quote=True)
+    youtube_video_cards.append(f"""
+        <article class="youtube-video-card">
+            <div class="youtube-video-frame">
+                <iframe
+                    src="https://www.youtube-nocookie.com/embed/{video_id}"
+                    title="{video_title}"
+                    loading="lazy"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowfullscreen
+                ></iframe>
+            </div>
+            <a class="youtube-video-title" href="{video_url}" target="_blank" rel="noopener noreferrer">{video_title}</a>
+        </article>
+    """)
+
+if youtube_video_cards:
+    youtube_recent_markup = f"""
+    <section class="youtube-latest" aria-labelledby="youtubeLatestTitle">
+        <h2 class="youtube-latest-title" id="youtubeLatestTitle">Vidéos récentes</h2>
+        <p class="youtube-latest-subtitle">Les 4 vidéos les plus récentes de la chaîne, mises à jour automatiquement.</p>
+        <div class="youtube-carousel" data-youtube-carousel>
+            <button type="button" class="youtube-carousel-arrow youtube-carousel-prev" data-youtube-prev aria-label="Vidéos précédentes" title="Vidéos précédentes"></button>
+            <div class="youtube-video-track" data-youtube-track>{''.join(youtube_video_cards)}</div>
+            <button type="button" class="youtube-carousel-arrow youtube-carousel-next" data-youtube-next aria-label="Vidéos suivantes" title="Vidéos suivantes"></button>
+        </div>
+    </section>
+    """
+else:
+    youtube_recent_markup = f"""
+    <section class="youtube-latest">
+        <h2 class="youtube-latest-title">Vidéos récentes</h2>
+        <div class="youtube-video-empty">Les dernières vidéos sont temporairement indisponibles. <a href="{YOUTUBE_URL}" target="_blank" rel="noopener noreferrer">Ouvrir la chaîne YouTube</a>.</div>
+    </section>
+    """
+
 youtube_body = f"""
 <img src="Youtube.png" loading="lazy" decoding="async" class="tile-logo youtube-logo" alt="Logo YouTube">
 <h1>Chaîne YouTube Legodingo13</h1>
 <p class="lead">Retrouve la chaîne YouTube officielle de Legodingo13 et les contenus autour de Forge of Empires et de sa communauté.</p>
-<div class="stats">
+<div class="youtube-summary">
     <div class="stat"><span class="number">{youtube_subscribers}</span><span class="label">abonnés YouTube</span></div>
-    <div class="stat"><span class="number">FOE</span><span class="label">contenus Forge of Empires</span></div>
+    <a class="youtube-channel-action" href="{YOUTUBE_URL}" target="_blank" rel="noopener noreferrer">Ouvrir la chaîne YouTube</a>
 </div>
-<a class="primary-button" href="{YOUTUBE_URL}" target="_blank" rel="noopener noreferrer">Ouvrir la chaîne YouTube</a>
+{youtube_recent_markup}
 <div class="grid">
     <a class="tile" href="discord.html"><img src="logo.png" loading="lazy" decoding="async" class="tile-logo server-logo-small" alt="Discord Legodingo13"><div class="tile-title">Discord</div><div class="tile-detail">Accéder à la page du serveur Discord Legodingo13</div></a>
     <a class="tile" href="{FOE_URL}" target="_blank" rel="noopener noreferrer"><img src="foe_logo.png" loading="lazy" decoding="async" class="tile-logo foe-logo" alt="Forge of Empires"><div class="tile-title">Forge of Empires</div><div class="tile-detail">Accéder au site officiel francophone du jeu</div></a>
@@ -4964,6 +5203,15 @@ assets = [
     "cursor_default.cur",
     "cursor_hover.cur",
     "cursor_drag.cur",
+
+    # Boutons FOE pour les carrousels d'images et de vidéos
+    "foe_carousel_left_normal.png",
+    "foe_carousel_left_hover.png",
+    "foe_carousel_left_push.png",
+    "foe_carousel_right_normal.png",
+    "foe_carousel_right_hover.png",
+    "foe_carousel_right_push.png",
+
     "tableau.png",
 
     # Mini-jeu Expédition de Guilde — chasse aux reliques
@@ -4993,8 +5241,10 @@ with open("last-update.txt", "w", encoding="utf-8") as f:
     f.write(f"Membres Discord : {member_count}\n")
     f.write(f"En ligne Discord : {online_count}\n")
     f.write(f"Abonnés YouTube : {youtube_subscribers}\n")
+    f.write(f"Vidéos YouTube récentes détectées : {len(youtube_videos)}\n")
 
 print(f"Discord : {member_count} membres / {online_count} en ligne")
 print(f"YouTube via SocialCounts : {youtube_subscribers} abonnés")
+print(f"YouTube RSS : {len(youtube_videos)} vidéo(s) récente(s) détectée(s)")
 print("Pages générées : Accueil, Discord, YouTube, Profil Legodingo13, Tutoriels de jeu, compatibilité tableau.html")
 print(f"Pages de partage Open Graph générées : {len(tutorial_share_pages)}")
