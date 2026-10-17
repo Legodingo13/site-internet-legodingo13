@@ -371,18 +371,19 @@ h2 { margin: 10px 0 16px; }
     text-align: center;
     text-decoration: none;
     color: white;
-    font-size: 18px;
-    font-weight: 800;
-    line-height: 1.25;
-    background: linear-gradient(145deg,rgba(255,255,255,.075),rgba(255,255,255,.035));
-    border: 1px solid rgba(255,255,255,.09);
+    font-size: clamp(22px, 2.4vw, 28px);
+    font-weight: 900;
+    line-height: 1.2;
+    background: linear-gradient(135deg,#5865F2,#7289da);
+    border: 1px solid rgba(255,255,255,.14);
+    box-shadow: 0 12px 30px rgba(88,101,242,.35);
     transition: transform .2s ease, border-color .2s ease, background .2s ease, box-shadow .2s ease;
 }
 .youtube-channel-action:hover {
     transform: translateY(-3px);
-    border-color: rgba(255,255,255,.20);
-    background: linear-gradient(145deg,rgba(255,255,255,.105),rgba(255,255,255,.055));
-    box-shadow: 0 16px 34px rgba(0,0,0,.22);
+    border-color: rgba(255,255,255,.24);
+    background: linear-gradient(135deg,#6571f4,#7d92df);
+    box-shadow: 0 17px 35px rgba(88,101,242,.48);
 }
 .youtube-latest {
     margin: 10px 0 34px;
@@ -866,36 +867,29 @@ h2 { margin: 10px 0 16px; }
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
-    z-index: 5;
+    z-index: 15;
     width: 54px;
     height: 54px;
     padding: 0;
     border: 0;
     border-radius: 50%;
-    background-color: transparent;
-    background-repeat: no-repeat;
-    background-position: center;
-    background-size: contain;
+    background: transparent !important;
     filter: drop-shadow(0 5px 8px rgba(0,0,0,.65));
+    overflow: visible;
+}
+.tutorial-carousel-arrow img,
+.youtube-carousel-arrow img {
+    display: block;
+    width: 54px;
+    height: 54px;
+    max-width: none;
+    pointer-events: none;
+    user-select: none;
 }
 .tutorial-carousel-prev,
-.youtube-carousel-prev {
-    left: 10px;
-    background-image: url("foe_carousel_left_normal.png");
-}
-.tutorial-carousel-prev:hover,
-.youtube-carousel-prev:hover { background-image: url("foe_carousel_left_hover.png"); }
-.tutorial-carousel-prev:active,
-.youtube-carousel-prev:active { background-image: url("foe_carousel_left_push.png"); }
+.youtube-carousel-prev { left: 10px; }
 .tutorial-carousel-next,
-.youtube-carousel-next {
-    right: 10px;
-    background-image: url("foe_carousel_right_normal.png");
-}
-.tutorial-carousel-next:hover,
-.youtube-carousel-next:hover { background-image: url("foe_carousel_right_hover.png"); }
-.tutorial-carousel-next:active,
-.youtube-carousel-next:active { background-image: url("foe_carousel_right_push.png"); }
+.youtube-carousel-next { right: 10px; }
 .tutorial-carousel-position {
     position: absolute;
     left: 50%;
@@ -2149,6 +2143,28 @@ SCRIPT = r"""
     updateVisibility();
 })();
 
+function bindFoeArrowStates(root) {
+    (root || document).querySelectorAll("[data-foe-arrow]").forEach(function (button) {
+        if (button.dataset.foeArrowBound === "1") return;
+        button.dataset.foeArrowBound = "1";
+        const image = button.querySelector("img");
+        if (!image) return;
+        const setState = function (state) {
+            const src = button.dataset[state];
+            if (src) image.src = src;
+        };
+        button.addEventListener("pointerenter", function () { setState("hover"); });
+        button.addEventListener("pointerleave", function () { setState("normal"); });
+        button.addEventListener("pointerdown", function () { setState("down"); });
+        button.addEventListener("pointerup", function () { setState("hover"); });
+        button.addEventListener("pointercancel", function () { setState("normal"); });
+        button.addEventListener("focus", function () { setState("hover"); });
+        button.addEventListener("blur", function () { setState("normal"); });
+    });
+}
+
+bindFoeArrowStates(document);
+
 (function () {
     document.querySelectorAll("[data-youtube-carousel]").forEach(function (carousel) {
         const track = carousel.querySelector("[data-youtube-track]");
@@ -2574,8 +2590,8 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
                 }).join("");
                 return `<div class="tutorial-public-block tutorial-carousel" data-carousel data-carousel-current="0">
                     <div class="tutorial-carousel-stage">${slides}</div>
-                    <button type="button" class="tutorial-carousel-arrow tutorial-carousel-prev" data-carousel-prev aria-label="Image précédente" title="Image précédente"></button>
-                    <button type="button" class="tutorial-carousel-arrow tutorial-carousel-next" data-carousel-next aria-label="Image suivante" title="Image suivante"></button>
+                    <button type="button" class="tutorial-carousel-arrow tutorial-carousel-prev" data-carousel-prev data-foe-arrow data-normal="foe_carousel_left_normal.png" data-hover="foe_carousel_left_hover.png" data-down="foe_carousel_left_push.png" aria-label="Image précédente" title="Image précédente"><img src="foe_carousel_left_normal.png" alt=""></button>
+                    <button type="button" class="tutorial-carousel-arrow tutorial-carousel-next" data-carousel-next data-foe-arrow data-normal="foe_carousel_right_normal.png" data-hover="foe_carousel_right_hover.png" data-down="foe_carousel_right_push.png" aria-label="Image suivante" title="Image suivante"><img src="foe_carousel_right_normal.png" alt=""></button>
                     <div class="tutorial-carousel-position"><span data-carousel-position>1</span> / ${images.length}</div>
                 </div>`;
             }
@@ -2886,7 +2902,28 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
         if (position) position.textContent = String(index + 1);
     }
 
+    function bindTutorialFoeArrows(root) {
+        (root || accordion).querySelectorAll("[data-foe-arrow]").forEach(button => {
+            if (button.dataset.foeArrowBound === "1") return;
+            button.dataset.foeArrowBound = "1";
+            const image = button.querySelector("img");
+            if (!image) return;
+            const setState = state => {
+                const src = button.dataset[state];
+                if (src) image.src = src;
+            };
+            button.addEventListener("pointerenter", () => setState("hover"));
+            button.addEventListener("pointerleave", () => setState("normal"));
+            button.addEventListener("pointerdown", () => setState("down"));
+            button.addEventListener("pointerup", () => setState("hover"));
+            button.addEventListener("pointercancel", () => setState("normal"));
+            button.addEventListener("focus", () => setState("hover"));
+            button.addEventListener("blur", () => setState("normal"));
+        });
+    }
+
     function bindTutorialImageEvents() {
+        bindTutorialFoeArrows(accordion);
         accordion.querySelectorAll(".tutorial-image-open").forEach(button => {
             button.addEventListener("click", event => {
                 const carousel = button.closest("[data-carousel]");
@@ -4425,9 +4462,9 @@ if youtube_video_cards:
         <h2 class="youtube-latest-title" id="youtubeLatestTitle">Vidéos récentes</h2>
         <p class="youtube-latest-subtitle">Les 4 vidéos les plus récentes de la chaîne, mises à jour automatiquement.</p>
         <div class="youtube-carousel" data-youtube-carousel>
-            <button type="button" class="youtube-carousel-arrow youtube-carousel-prev" data-youtube-prev aria-label="Vidéos précédentes" title="Vidéos précédentes"></button>
+            <button type="button" class="youtube-carousel-arrow youtube-carousel-prev" data-youtube-prev data-foe-arrow data-normal="foe_carousel_left_normal.png" data-hover="foe_carousel_left_hover.png" data-down="foe_carousel_left_push.png" aria-label="Vidéos précédentes" title="Vidéos précédentes"><img src="foe_carousel_left_normal.png" alt=""></button>
             <div class="youtube-video-track" data-youtube-track>{''.join(youtube_video_cards)}</div>
-            <button type="button" class="youtube-carousel-arrow youtube-carousel-next" data-youtube-next aria-label="Vidéos suivantes" title="Vidéos suivantes"></button>
+            <button type="button" class="youtube-carousel-arrow youtube-carousel-next" data-youtube-next data-foe-arrow data-normal="foe_carousel_right_normal.png" data-hover="foe_carousel_right_hover.png" data-down="foe_carousel_right_push.png" aria-label="Vidéos suivantes" title="Vidéos suivantes"><img src="foe_carousel_right_normal.png" alt=""></button>
         </div>
     </section>
     """
