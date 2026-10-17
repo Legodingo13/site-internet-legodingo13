@@ -2024,12 +2024,19 @@ h2 { margin: 10px 0 16px; }
     min-width: 120px;
 }
 .shortcut-install-modal {
-    position: fixed;
-    inset: 0;
+    position: fixed !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
     z-index: 25000;
     display: grid;
     place-items: center;
     padding: 18px;
+    overflow: auto;
     background: rgba(0,0,0,.72);
     backdrop-filter: blur(5px);
 }
@@ -2342,6 +2349,16 @@ bindFoeArrowStates(document);
     const closeButton = document.getElementById("shortcutInstallClose");
     const status = document.getElementById("shortcutInstallStatus");
 
+    // IMPORTANT :
+    // .card utilise backdrop-filter, ce qui peut transformer un élément
+    // position:fixed enfant en élément "fixé" par rapport à la carte/page.
+    // On déplace donc la modale directement sous <body> pour qu'elle soit
+    // toujours centrée par rapport à l'écran visible, quelle que soit
+    // la position de défilement dans la page.
+    if (modal && modal.parentElement !== document.body) {
+        document.body.appendChild(modal);
+    }
+
     let deferredInstallPrompt = window.__legodingoInstallPrompt || null;
 
     if ("serviceWorker" in navigator) {
@@ -2373,10 +2390,13 @@ bindFoeArrowStates(document);
         if (!modal) return;
         if (status) status.textContent = message;
         modal.hidden = false;
+        document.documentElement.style.overflow = "hidden";
     }
 
     function closeInfo() {
-        if (modal) modal.hidden = true;
+        if (!modal) return;
+        modal.hidden = true;
+        document.documentElement.style.overflow = "";
     }
 
     window.addEventListener("beforeinstallprompt", function (event) {
