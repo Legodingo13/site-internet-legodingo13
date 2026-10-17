@@ -2181,7 +2181,24 @@ bindFoeArrowStates(document);
         }
 
         function move(direction) {
-            track.scrollBy({ left: cardStep() * direction, behavior: "smooth" });
+            const step = cardStep();
+            const maxScroll = Math.max(0, track.scrollWidth - track.clientWidth);
+            const tolerance = Math.max(4, step * 0.12);
+
+            if (direction > 0) {
+                if (track.scrollLeft >= maxScroll - tolerance) {
+                    track.scrollTo({ left: 0, behavior: "smooth" });
+                    return;
+                }
+                track.scrollBy({ left: step, behavior: "smooth" });
+                return;
+            }
+
+            if (track.scrollLeft <= tolerance) {
+                track.scrollTo({ left: maxScroll, behavior: "smooth" });
+                return;
+            }
+            track.scrollBy({ left: -step, behavior: "smooth" });
         }
 
         previous.addEventListener("click", function () { move(-1); });
