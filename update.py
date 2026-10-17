@@ -2042,6 +2042,7 @@ h2 { margin: 10px 0 16px; }
 }
 .shortcut-install-modal[hidden] { display: none; }
 .shortcut-install-dialog {
+    position: relative;
     width: min(620px, 96vw);
     border-radius: 20px;
     padding: 22px;
