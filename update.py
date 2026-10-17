@@ -1997,15 +1997,15 @@ h2 { margin: 10px 0 16px; }
 .install-shortcut-copy {
     flex: 1 1 auto;
     min-width: 0;
-}
-.install-shortcut-title-line {
     display: flex;
-    align-items: center;
-    gap: 9px;
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    text-align: left;
 }
 .install-shortcut-title {
-    display: inline;
+    display: block;
+    width: 100%;
     color: #fff;
     font-size: 18px;
     font-weight: 800;
@@ -2013,27 +2013,11 @@ h2 { margin: 10px 0 16px; }
 }
 .install-shortcut-subtitle {
     display: block;
+    width: 100%;
     color: #bdc5cf;
-    margin-top: 4px;
+    margin-top: 5px;
     font-size: 13px;
     line-height: 1.45;
-}
-.shortcut-info-button {
-    border: 0;
-    padding: 0;
-    margin: 0;
-    background: transparent;
-    display: inline-grid;
-    place-items: center;
-    line-height: 0;
-    flex: 0 0 auto;
-}
-.shortcut-info-button img {
-    display: block;
-    width: 40px;
-    height: 40px;
-    object-fit: contain;
-    pointer-events: none;
 }
 .install-shortcut-strip .shortcut-install-button {
     flex: 0 0 auto;
@@ -2352,31 +2336,42 @@ bindFoeArrowStates(document);
 
 
 (function () {
-    if ("serviceWorker" in navigator) {
-        window.addEventListener("load", function () {
-            navigator.serviceWorker.register("sw.js").catch(function () {});
-        });
-    }
-
+    const SITE_SCOPE = "/site-internet-legodingo13/";
     const installButton = document.getElementById("installShortcutButton");
-    const infoButton = document.getElementById("shortcutInfoButton");
     const modal = document.getElementById("shortcutInstallModal");
     const closeButton = document.getElementById("shortcutInstallClose");
     const status = document.getElementById("shortcutInstallStatus");
-    let deferredInstallPrompt = null;
 
-    if (!installButton && !infoButton && !modal) return;
+    let deferredInstallPrompt = window.__legodingoInstallPrompt || null;
+
+    if ("serviceWorker" in navigator) {
+        window.addEventListener("load", function () {
+            navigator.serviceWorker
+                .register(SITE_SCOPE + "sw.js?v=2", { scope: SITE_SCOPE })
+                .catch(function (error) {
+                    console.warn("Service worker Legodingo13 non enregistré :", error);
+                });
+        });
+    }
+
+    if (!installButton && !modal) return;
 
     function isStandalone() {
         return window.matchMedia("(display-mode: standalone)").matches ||
             window.navigator.standalone === true;
     }
 
+    function isIOS() {
+        return /iphone|ipad|ipod/i.test(navigator.userAgent);
+    }
+
+    function isFirefox() {
+        return /firefox/i.test(navigator.userAgent);
+    }
+
     function openInfo(message) {
         if (!modal) return;
-        if (status) {
-            status.textContent = message || "Choisis la méthode correspondant à ton appareil.";
-        }
+        if (status) status.textContent = message;
         modal.hidden = false;
     }
 
@@ -2387,51 +2382,68 @@ bindFoeArrowStates(document);
     window.addEventListener("beforeinstallprompt", function (event) {
         event.preventDefault();
         deferredInstallPrompt = event;
+        window.__legodingoInstallPrompt = event;
+        if (installButton) {
+            installButton.disabled = false;
+            installButton.setAttribute("aria-label", "Installer Legodingo13");
+        }
     });
 
     window.addEventListener("appinstalled", function () {
         deferredInstallPrompt = null;
-        openInfo("Legodingo13 a bien été installé sur cet appareil.");
+        window.__legodingoInstallPrompt = null;
+        if (installButton) installButton.textContent = "Installé";
+        openInfo("Legodingo13 a bien été installé. Tu peux maintenant l'ouvrir directement depuis ton bureau ou ton écran d'accueil.");
     });
-
-    if (infoButton) {
-        infoButton.addEventListener("click", function () {
-            openInfo("L'accès direct ouvre directement la page d'accueil Legodingo13 avec l'icône choisie.");
-        });
-    }
 
     if (installButton) {
         installButton.addEventListener("click", async function () {
             if (isStandalone()) {
-                openInfo("Legodingo13 est déjà ouvert depuis son accès direct.");
+                openInfo("Legodingo13 est déjà installé et ouvert depuis son accès direct.");
                 return;
             }
 
-            if (deferredInstallPrompt) {
-                deferredInstallPrompt.prompt();
+            const promptEvent = deferredInstallPrompt || window.__legodingoInstallPrompt;
+
+            if (promptEvent) {
                 try {
-                    await deferredInstallPrompt.userChoice;
-                } catch (error) {}
-                deferredInstallPrompt = null;
+                    promptEvent.prompt();
+                    const choice = await promptEvent.userChoice;
+
+                    if (choice && choice.outcome === "accepted") {
+                        installButton.textContent = "Installation…";
+                    }
+
+                    deferredInstallPrompt = null;
+                    window.__legodingoInstallPrompt = null;
+                    return;
+                } catch (error) {
+                    console.warn("Fenêtre d'installation non disponible :", error);
+                }
+            }
+
+            if (isIOS()) {
+                openInfo("Sur iPhone ou iPad, Apple ne permet pas au site de lancer automatiquement l'installation. Dans Safari : touche Partager, puis « Ajouter à l'écran d'accueil ».");
                 return;
             }
 
-            const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
-            if (ios) {
-                openInfo("Sur iPhone/iPad : ouvre ce site dans Safari, touche Partager, puis « Ajouter à l'écran d'accueil ».");
-            } else {
-                openInfo("Si le bouton d'installation du navigateur n'apparaît pas, ouvre son menu puis choisis « Installer Legodingo13 » ou « Ajouter à l'écran d'accueil ».");
+            if (isFirefox()) {
+                openInfo("Firefox sur ordinateur ne propose pas l'installation de ce type d'application web. Ouvre le site avec Chrome ou Edge pour utiliser le bouton Installer.");
+                return;
             }
+
+            openInfo("L'installation automatique n'est pas encore proposée par le navigateur. Recharge une fois cette page après la mise à jour du site. Avec Chrome ou Edge, tu peux aussi ouvrir le menu du navigateur puis choisir « Installer Legodingo13 ».");
         });
     }
 
     if (closeButton) closeButton.addEventListener("click", closeInfo);
+
     if (modal) {
         modal.addEventListener("click", function (event) {
             if (event.target === modal) closeInfo();
         });
     }
-})();
+})()
 
 </script>
 """
@@ -4155,12 +4167,22 @@ def shell(filename, active, title, description, body, robots="index, follow", og
 <link rel="icon" type="image/x-icon" href="favicon.ico?v=4">
 <link rel="shortcut icon" type="image/x-icon" href="favicon.ico?v=4">
 <link rel="icon" type="image/png" sizes="32x32" href="onglet_logo_optimise.png?v=4">
-<link rel="apple-touch-icon" sizes="180x180" href="legodingo13_shortcut_180.png?v=1">
-<link rel="manifest" href="manifest.webmanifest?v=1">
+<link rel="apple-touch-icon" sizes="180x180" href="/site-internet-legodingo13/legodingo13_shortcut_180.png?v=2">
+<link rel="manifest" href="/site-internet-legodingo13/manifest.webmanifest?v=2">
 <meta name="theme-color" content="#151922">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Legodingo13">
+<script>
+window.__legodingoInstallPrompt = null;
+window.addEventListener("beforeinstallprompt", function (event) {{
+    event.preventDefault();
+    window.__legodingoInstallPrompt = event;
+}});
+window.addEventListener("appinstalled", function () {{
+    window.__legodingoInstallPrompt = null;
+}});
+</script>
 <title>{html.escape(title)}</title>
 <meta name="description" content="{html.escape(description, quote=True)}">
 <meta name="robots" content="{robots}">
@@ -4498,36 +4520,76 @@ os.makedirs("_site", exist_ok=True)
 # Application web installable (PWA) : permet d'ajouter Legodingo13
 # à l'écran d'accueil / au lanceur avec l'icône choisie.
 manifest = {
-    "id": "./",
+    "id": "/site-internet-legodingo13/",
     "name": "Legodingo13 - Communauté Forge of Empires",
     "short_name": "Legodingo13",
     "description": "Accès direct au site communautaire Forge of Empires de Legodingo13.",
-    "start_url": "./",
-    "scope": "./",
+    "start_url": "/site-internet-legodingo13/",
+    "scope": "/site-internet-legodingo13/",
     "display": "standalone",
+    "display_override": ["standalone", "minimal-ui"],
     "background_color": "#151922",
     "theme_color": "#151922",
     "icons": [
         {
-            "src": "legodingo13_shortcut_192.png",
+            "src": "/site-internet-legodingo13/legodingo13_shortcut_192.png",
             "sizes": "192x192",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any"
         },
         {
-            "src": "legodingo13_shortcut_512.png",
+            "src": "/site-internet-legodingo13/legodingo13_shortcut_512.png",
             "sizes": "512x512",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any"
         }
     ]
 }
 with open("_site/manifest.webmanifest", "w", encoding="utf-8") as f:
     json.dump(manifest, f, ensure_ascii=False, indent=2)
 
-service_worker = """self.addEventListener("install", event => {
+service_worker = """const CACHE_NAME = "legodingo13-pwa-v2";
+const APP_SHELL = [
+    "./",
+    "./index.html",
+    "./manifest.webmanifest",
+    "./legodingo13_shortcut_192.png",
+    "./legodingo13_shortcut_512.png"
+];
+
+self.addEventListener("install", event => {
+    event.waitUntil(
+        caches.open(CACHE_NAME)
+            .then(cache => cache.addAll(APP_SHELL))
+            .catch(() => undefined)
+    );
     self.skipWaiting();
 });
+
 self.addEventListener("activate", event => {
-    event.waitUntil(self.clients.claim());
+    event.waitUntil(
+        caches.keys()
+            .then(keys => Promise.all(
+                keys
+                    .filter(key => key.startsWith("legodingo13-pwa-") && key !== CACHE_NAME)
+                    .map(key => caches.delete(key))
+            ))
+            .then(() => self.clients.claim())
+    );
+});
+
+self.addEventListener("fetch", event => {
+    if (event.request.method !== "GET") return;
+
+    event.respondWith(
+        fetch(event.request)
+            .then(response => {
+                const copy = response.clone();
+                caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy)).catch(() => {});
+                return response;
+            })
+            .catch(() => caches.match(event.request))
+    );
 });
 """
 with open("_site/sw.js", "w", encoding="utf-8") as f:
@@ -4545,20 +4607,7 @@ Retrouve ici mes liens officiels, puis une sélection de sites, extensions et ch
 <div class="install-shortcut-strip" id="installShortcutStrip">
     <img src="legodingo13_shortcut_512.png" class="shortcut-icon" alt="Icône d'accès direct Legodingo13">
     <div class="install-shortcut-copy">
-        <div class="install-shortcut-title-line">
-            <span class="install-shortcut-title">Garde la communauté FOE à portée de clic</span>
-            <button
-                type="button"
-                class="shortcut-info-button"
-                id="shortcutInfoButton"
-                data-foe-arrow
-                data-normal="info_btn_normal.png"
-                data-hover="info_btn_hover.png"
-                data-down="info_btn_press.png"
-                aria-label="Informations sur l'accès direct"
-                title="Informations sur l'accès direct"
-            ><img src="info_btn_normal.png" alt=""></button>
-        </div>
+        <span class="install-shortcut-title">Garde la communauté FOE à portée de clic</span>
         <span class="install-shortcut-subtitle">Ajoute un raccourci sur ton ordinateur ou ton téléphone pour revenir sur le site internet rapidement.</span>
     </div>
     <button type="button" class="primary-button gold-button shortcut-install-button" id="installShortcutButton">Installer</button>
@@ -5581,9 +5630,6 @@ assets = [
     "legodingo13_shortcut_512.png",
     "legodingo13_shortcut_192.png",
     "legodingo13_shortcut_180.png",
-    "info_btn_normal.png",
-    "info_btn_hover.png",
-    "info_btn_press.png",
 
     # Boutons FOE pour les carrousels d'images et de vidéos
     "foe_carousel_left_normal.png",
