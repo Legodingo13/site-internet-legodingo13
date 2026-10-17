@@ -1971,6 +1971,150 @@ h2 { margin: 10px 0 16px; }
     .page-view-counter { order:2; align-self:flex-start; }
     .footer-spacer { display:none; }
 }
+
+/* =========================================================
+   ACCÈS DIRECT / INSTALLATION PWA — ACCUEIL
+   ========================================================= */
+.install-shortcut-strip {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 14px 16px;
+    margin: 0 0 23px;
+    border-radius: 15px;
+    background: rgba(13,16,22,.82);
+    border: 1px solid rgba(255,201,121,.25);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.025);
+}
+.install-shortcut-strip .shortcut-icon {
+    width: 64px;
+    height: 64px;
+    flex: 0 0 auto;
+    border-radius: 15px;
+    object-fit: cover;
+    box-shadow: 0 6px 14px rgba(0,0,0,.38);
+}
+.install-shortcut-copy {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.install-shortcut-title-line {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    flex-wrap: wrap;
+}
+.install-shortcut-title {
+    display: inline;
+    color: #fff;
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1.25;
+}
+.install-shortcut-subtitle {
+    display: block;
+    color: #bdc5cf;
+    margin-top: 4px;
+    font-size: 13px;
+    line-height: 1.45;
+}
+.shortcut-info-button {
+    border: 0;
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    display: inline-grid;
+    place-items: center;
+    line-height: 0;
+    flex: 0 0 auto;
+}
+.shortcut-info-button img {
+    display: block;
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    pointer-events: none;
+}
+.install-shortcut-strip .shortcut-install-button {
+    flex: 0 0 auto;
+    min-width: 120px;
+}
+.shortcut-install-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 25000;
+    display: grid;
+    place-items: center;
+    padding: 18px;
+    background: rgba(0,0,0,.72);
+    backdrop-filter: blur(5px);
+}
+.shortcut-install-modal[hidden] { display: none; }
+.shortcut-install-dialog {
+    width: min(620px, 96vw);
+    border-radius: 20px;
+    padding: 22px;
+    background: #1b2028;
+    border: 1px solid #66717e;
+    box-shadow: 0 24px 70px rgba(0,0,0,.58);
+}
+.shortcut-install-dialog-head {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding-right: 62px;
+}
+.shortcut-install-dialog-head img {
+    width: 76px;
+    height: 76px;
+    border-radius: 18px;
+    flex: 0 0 auto;
+}
+.shortcut-install-dialog h2 {
+    margin: 0 0 6px;
+}
+.shortcut-install-dialog p {
+    color: #cbd2dc;
+    line-height: 1.55;
+}
+.shortcut-platforms {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0,1fr));
+    gap: 10px;
+    margin-top: 18px;
+}
+.shortcut-platform {
+    padding: 14px;
+    border-radius: 13px;
+    background: #232a34;
+    border: 1px solid #424d59;
+}
+.shortcut-platform strong {
+    display: block;
+    margin-bottom: 7px;
+    color: #ffd79a;
+}
+.shortcut-platform p {
+    margin: 0;
+    font-size: 13px;
+}
+.shortcut-modal-close {
+    float: right;
+}
+
+@media (max-width: 650px) {
+    .install-shortcut-strip {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+    .install-shortcut-strip .shortcut-install-button {
+        width: 100%;
+    }
+    .shortcut-platforms {
+        grid-template-columns: 1fr;
+    }
+}
+
 """
 
 SCRIPT = r"""
@@ -2204,6 +2348,89 @@ bindFoeArrowStates(document);
         previous.addEventListener("click", function () { move(-1); });
         next.addEventListener("click", function () { move(1); });
     });
+})();
+
+
+(function () {
+    if ("serviceWorker" in navigator) {
+        window.addEventListener("load", function () {
+            navigator.serviceWorker.register("sw.js").catch(function () {});
+        });
+    }
+
+    const installButton = document.getElementById("installShortcutButton");
+    const infoButton = document.getElementById("shortcutInfoButton");
+    const modal = document.getElementById("shortcutInstallModal");
+    const closeButton = document.getElementById("shortcutInstallClose");
+    const status = document.getElementById("shortcutInstallStatus");
+    let deferredInstallPrompt = null;
+
+    if (!installButton && !infoButton && !modal) return;
+
+    function isStandalone() {
+        return window.matchMedia("(display-mode: standalone)").matches ||
+            window.navigator.standalone === true;
+    }
+
+    function openInfo(message) {
+        if (!modal) return;
+        if (status) {
+            status.textContent = message || "Choisis la méthode correspondant à ton appareil.";
+        }
+        modal.hidden = false;
+    }
+
+    function closeInfo() {
+        if (modal) modal.hidden = true;
+    }
+
+    window.addEventListener("beforeinstallprompt", function (event) {
+        event.preventDefault();
+        deferredInstallPrompt = event;
+    });
+
+    window.addEventListener("appinstalled", function () {
+        deferredInstallPrompt = null;
+        openInfo("Legodingo13 a bien été installé sur cet appareil.");
+    });
+
+    if (infoButton) {
+        infoButton.addEventListener("click", function () {
+            openInfo("L'accès direct ouvre directement la page d'accueil Legodingo13 avec l'icône choisie.");
+        });
+    }
+
+    if (installButton) {
+        installButton.addEventListener("click", async function () {
+            if (isStandalone()) {
+                openInfo("Legodingo13 est déjà ouvert depuis son accès direct.");
+                return;
+            }
+
+            if (deferredInstallPrompt) {
+                deferredInstallPrompt.prompt();
+                try {
+                    await deferredInstallPrompt.userChoice;
+                } catch (error) {}
+                deferredInstallPrompt = null;
+                return;
+            }
+
+            const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+            if (ios) {
+                openInfo("Sur iPhone/iPad : ouvre ce site dans Safari, touche Partager, puis « Ajouter à l'écran d'accueil ».");
+            } else {
+                openInfo("Si le bouton d'installation du navigateur n'apparaît pas, ouvre son menu puis choisis « Installer Legodingo13 » ou « Ajouter à l'écran d'accueil ».");
+            }
+        });
+    }
+
+    if (closeButton) closeButton.addEventListener("click", closeInfo);
+    if (modal) {
+        modal.addEventListener("click", function (event) {
+            if (event.target === modal) closeInfo();
+        });
+    }
 })();
 
 </script>
@@ -3928,7 +4155,12 @@ def shell(filename, active, title, description, body, robots="index, follow", og
 <link rel="icon" type="image/x-icon" href="favicon.ico?v=4">
 <link rel="shortcut icon" type="image/x-icon" href="favicon.ico?v=4">
 <link rel="icon" type="image/png" sizes="32x32" href="onglet_logo_optimise.png?v=4">
-<link rel="apple-touch-icon" href="onglet_logo_optimise.png?v=4">
+<link rel="apple-touch-icon" sizes="180x180" href="legodingo13_shortcut_180.png?v=1">
+<link rel="manifest" href="manifest.webmanifest?v=1">
+<meta name="theme-color" content="#151922">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Legodingo13">
 <title>{html.escape(title)}</title>
 <meta name="description" content="{html.escape(description, quote=True)}">
 <meta name="robots" content="{robots}">
@@ -4263,6 +4495,44 @@ if os.path.exists("_site"):
     shutil.rmtree("_site")
 os.makedirs("_site", exist_ok=True)
 
+# Application web installable (PWA) : permet d'ajouter Legodingo13
+# à l'écran d'accueil / au lanceur avec l'icône choisie.
+manifest = {
+    "id": "./",
+    "name": "Legodingo13 - Communauté Forge of Empires",
+    "short_name": "Legodingo13",
+    "description": "Accès direct au site communautaire Forge of Empires de Legodingo13.",
+    "start_url": "./",
+    "scope": "./",
+    "display": "standalone",
+    "background_color": "#151922",
+    "theme_color": "#151922",
+    "icons": [
+        {
+            "src": "legodingo13_shortcut_192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "legodingo13_shortcut_512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}
+with open("_site/manifest.webmanifest", "w", encoding="utf-8") as f:
+    json.dump(manifest, f, ensure_ascii=False, indent=2)
+
+service_worker = """self.addEventListener("install", event => {
+    self.skipWaiting();
+});
+self.addEventListener("activate", event => {
+    event.waitUntil(self.clients.claim());
+});
+"""
+with open("_site/sw.js", "w", encoding="utf-8") as f:
+    f.write(service_worker)
+
 
 # ACCUEIL
 home_body = f"""
@@ -4271,6 +4541,55 @@ home_body = f"""
 Bienvenue sur le site de la communauté Legodingo13 autour de Forge of Empires.
 Retrouve ici mes liens officiels, puis une sélection de sites, extensions et chaînes YouTube tierces utiles à la communauté Forge of Empires.
 </p>
+
+<div class="install-shortcut-strip" id="installShortcutStrip">
+    <img src="legodingo13_shortcut_512.png" class="shortcut-icon" alt="Icône d'accès direct Legodingo13">
+    <div class="install-shortcut-copy">
+        <div class="install-shortcut-title-line">
+            <span class="install-shortcut-title">Garde la communauté FOE à portée de clic</span>
+            <button
+                type="button"
+                class="shortcut-info-button"
+                id="shortcutInfoButton"
+                data-foe-arrow
+                data-normal="info_btn_normal.png"
+                data-hover="info_btn_hover.png"
+                data-down="info_btn_press.png"
+                aria-label="Informations sur l'accès direct"
+                title="Informations sur l'accès direct"
+            ><img src="info_btn_normal.png" alt=""></button>
+        </div>
+        <span class="install-shortcut-subtitle">Ajoute un raccourci sur ton ordinateur ou ton téléphone pour revenir sur le site internet rapidement.</span>
+    </div>
+    <button type="button" class="primary-button gold-button shortcut-install-button" id="installShortcutButton">Installer</button>
+</div>
+
+<div class="shortcut-install-modal" id="shortcutInstallModal" hidden>
+    <div class="shortcut-install-dialog" role="dialog" aria-modal="true" aria-labelledby="shortcutInstallTitle">
+        <button type="button" class="secondary-button shortcut-modal-close" id="shortcutInstallClose">Fermer</button>
+        <div class="shortcut-install-dialog-head">
+            <img src="legodingo13_shortcut_512.png" alt="Icône Legodingo13">
+            <div>
+                <h2 id="shortcutInstallTitle">Accès direct à Legodingo13</h2>
+                <p id="shortcutInstallStatus">Choisis la méthode correspondant à ton appareil.</p>
+            </div>
+        </div>
+        <div class="shortcut-platforms">
+            <div class="shortcut-platform">
+                <strong>💻 Ordinateur</strong>
+                <p>Avec Chrome ou Edge, clique sur « Installer ». Si aucune fenêtre ne s'ouvre, utilise le menu du navigateur puis « Installer Legodingo13 ».</p>
+            </div>
+            <div class="shortcut-platform">
+                <strong>🤖 Android</strong>
+                <p>Utilise « Installer » ou, dans le menu du navigateur, « Ajouter à l'écran d'accueil ».</p>
+            </div>
+            <div class="shortcut-platform">
+                <strong>📱 iPhone / iPad</strong>
+                <p>Dans Safari : touche Partager puis « Ajouter à l'écran d'accueil ». Apple impose cette étape manuelle.</p>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="stats">
     <div class="stat"><span class="number">{member_count}</span><span class="label">membres sur le serveur Discord</span></div>
@@ -5257,6 +5576,14 @@ assets = [
     "cursor_default.cur",
     "cursor_hover.cur",
     "cursor_drag.cur",
+
+    # Accès direct / PWA
+    "legodingo13_shortcut_512.png",
+    "legodingo13_shortcut_192.png",
+    "legodingo13_shortcut_180.png",
+    "info_btn_normal.png",
+    "info_btn_hover.png",
+    "info_btn_press.png",
 
     # Boutons FOE pour les carrousels d'images et de vidéos
     "foe_carousel_left_normal.png",
