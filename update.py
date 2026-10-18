@@ -1555,6 +1555,27 @@ h2 { margin: 10px 0 16px; }
     color: white;
     font-size: 19px;
 }
+.tutorial-modal-close.foe-modal-close {
+    width: 34px;
+    height: 34px;
+    padding: 5px;
+    border: 0;
+    background: transparent;
+    display: grid;
+    place-items: center;
+    line-height: 0;
+}
+.tutorial-modal-close.foe-modal-close img {
+    display: block;
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    pointer-events: none;
+}
+.tutorial-modal-close.foe-modal-close:focus-visible {
+    outline: 2px solid rgba(255,218,152,.9);
+    outline-offset: 2px;
+}
 .tutorial-modal label { display:block; margin-bottom:7px; color:#dfe2e8; }
 .tutorial-modal input[type="password"],
 .tutorial-modal input[type="text"],
@@ -2723,6 +2744,13 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
     const passwordInput = document.getElementById("tutorialPasswordInput");
     const passwordError = document.getElementById("tutorialPasswordError");
     const passwordValidate = document.getElementById("tutorialPasswordValidate");
+
+    // Comme pour les fenêtres YouTube, on sort la fenêtre de mot de passe
+    // du grand conteneur du site. Ainsi son position:fixed est calculé
+    // par rapport à l'écran visible et non par rapport à la carte/page.
+    if (passwordModal && passwordModal.parentElement !== document.body) {
+        document.body.appendChild(passwordModal);
+    }
 
     const confirmModal = document.getElementById("tutorialConfirmModal");
     const confirmTitle = document.getElementById("tutorialConfirmTitle");
@@ -3933,6 +3961,7 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
         passwordError.textContent = "";
         passwordInput.value = "";
         passwordModal.hidden = false;
+        document.documentElement.style.overflow = "hidden";
         setTimeout(() => passwordInput.focus(), 20);
     }
 
@@ -3940,6 +3969,7 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
         passwordModal.hidden = true;
         passwordInput.value = "";
         passwordError.textContent = "";
+        document.documentElement.style.overflow = "";
     }
 
     function base64ToBytes(value) {
@@ -5092,7 +5122,17 @@ youtube_admin_markup = r"""
 
 <div id="youtubePasswordModal" class="tutorial-modal-overlay" hidden>
     <div class="tutorial-modal" role="dialog" aria-modal="true" aria-labelledby="youtubePasswordTitle">
-        <button type="button" class="tutorial-modal-close" data-close-youtube-password aria-label="Fermer">×</button>
+        <button
+            type="button"
+            class="tutorial-modal-close foe-modal-close"
+            data-close-youtube-password
+            data-foe-arrow
+            data-normal="foe_close_normal.png"
+            data-hover="foe_close_hover.png"
+            data-down="foe_close_press.png"
+            aria-label="Fermer"
+            title="Fermer"
+        ><img src="foe_close_normal.png" alt=""></button>
         <h3 id="youtubePasswordTitle">Modifier la page YouTube</h3>
         <label for="youtubePasswordInput">Mot de passe :</label>
         <input id="youtubePasswordInput" type="password" autocomplete="current-password">
@@ -5106,7 +5146,17 @@ youtube_admin_markup = r"""
 
 <div id="youtubeFallbackModal" class="tutorial-modal-overlay" hidden>
     <div class="tutorial-modal" role="dialog" aria-modal="true" aria-labelledby="youtubeFallbackTitle">
-        <button type="button" class="tutorial-modal-close" data-close-youtube-fallback aria-label="Fermer">×</button>
+        <button
+            type="button"
+            class="tutorial-modal-close foe-modal-close"
+            data-close-youtube-fallback
+            data-foe-arrow
+            data-normal="foe_close_normal.png"
+            data-hover="foe_close_hover.png"
+            data-down="foe_close_press.png"
+            aria-label="Fermer"
+            title="Fermer"
+        ><img src="foe_close_normal.png" alt=""></button>
         <h3 id="youtubeFallbackTitle">Vidéos de remplacement</h3>
         <p class="youtube-admin-help">
             Ajoute 4 liens YouTube. Ils serviront de vidéos de secours lorsqu'une partie ou la totalité des vidéos récentes n'est pas disponible automatiquement.
@@ -5640,7 +5690,17 @@ Retrouve ici les tutoriels et guides de jeu publiés par Legodingo13.
 
 <div id="tutorialPasswordModal" class="tutorial-modal-overlay" hidden>
     <div class="tutorial-modal" role="dialog" aria-modal="true" aria-labelledby="tutorialPasswordTitle">
-        <button type="button" class="tutorial-modal-close" data-close-password aria-label="Fermer">×</button>
+        <button
+            type="button"
+            class="tutorial-modal-close foe-modal-close"
+            data-close-password
+            data-foe-arrow
+            data-normal="foe_close_normal.png"
+            data-hover="foe_close_hover.png"
+            data-down="foe_close_press.png"
+            aria-label="Fermer"
+            title="Fermer"
+        ><img src="foe_close_normal.png" alt=""></button>
         <h3 id="tutorialPasswordTitle">Modifier la page</h3>
         <label for="tutorialPasswordInput">Mot de passe :</label>
         <input id="tutorialPasswordInput" type="password" autocomplete="current-password">
