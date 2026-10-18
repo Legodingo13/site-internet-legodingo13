@@ -5230,18 +5230,78 @@ youtube_admin_markup = r"""
     async function loadFallbackLinks() {
         fallbackError.textContent = "";
         fallbackStatus.textContent = "Chargement…";
-        let videos = ["", "", "", ""];
 
+        let videos = ["", "", "", ""];
+        let loaded = false;
+
+        // 1) Affiche immédiatement la dernière saisie connue sur cet appareil.
+        // Cela évite que les champs redeviennent vides juste après un enregistrement,
+        // pendant que GitHub Pages est encore en cours de redéploiement.
         try {
-            const response = await fetch("youtube-fallbacks.json?ts=" + Date.now(), { cache: "no-store" });
-            if (response.ok) {
-                const data = await response.json();
-                if (data && Array.isArray(data.videos)) {
-                    videos = [0,1,2,3].map(index => String(data.videos[index] || ""));
-                }
+            const cached = JSON.parse(localStorage.getItem("legodingo13-youtube-fallbacks") || "null");
+            if (cached && Array.isArray(cached.videos)) {
+                videos = [0,1,2,3].map(index => String(cached.videos[index] || ""));
+                loaded = true;
             }
         } catch (error) {
-            console.warn(error);
+            console.warn("Cache local YouTube illisible :", error);
+        }
+
+        // 2) Une fois connecté, on lit directement le fichier du dépôt GitHub.
+        // C'est la source la plus récente : elle est mise à jour immédiatement lors
+        // de l'enregistrement, sans attendre la republication GitHub Pages.
+        if (adminToken) {
+            try {
+                const current = await githubRequest(API_URL + "?ref=" + encodeURIComponent(REPO_BRANCH));
+                if (current && current.content) {
+                    const cleanBase64 = String(current.content).replace(/\s+/g, "");
+                    const decoded = new TextDecoder().decode(base64ToBytes(cleanBase64));
+                    const data = JSON.parse(decoded);
+
+                    if (data && Array.isArray(data.videos)) {
+                        videos = [0,1,2,3].map(index => String(data.videos[index] || ""));
+                        loaded = true;
+
+                        try {
+                            localStorage.setItem(
+                                "legodingo13-youtube-fallbacks",
+                                JSON.stringify({
+                                    videos,
+                                    updatedAt: data.updatedAt || ""
+                                })
+                            );
+                        } catch (error) {}
+                    }
+                }
+            } catch (error) {
+                console.warn("Lecture GitHub des vidéos de remplacement impossible :", error);
+            }
+        }
+
+        // 3) Dernier recours : fichier actuellement publié sur GitHub Pages.
+        if (!loaded) {
+            try {
+                const response = await fetch("youtube-fallbacks.json?ts=" + Date.now(), { cache: "no-store" });
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data && Array.isArray(data.videos)) {
+                        videos = [0,1,2,3].map(index => String(data.videos[index] || ""));
+                        loaded = true;
+
+                        try {
+                            localStorage.setItem(
+                                "legodingo13-youtube-fallbacks",
+                                JSON.stringify({
+                                    videos,
+                                    updatedAt: data.updatedAt || ""
+                                })
+                            );
+                        } catch (error) {}
+                    }
+                }
+            } catch (error) {
+                console.warn(error);
+            }
         }
 
         fallbackInputs.forEach((input, index) => {
@@ -5374,7 +5434,20 @@ youtube_admin_markup = r"""
                 body: JSON.stringify(payload)
             });
 
-            fallbackStatus.textContent = "Vidéos enregistrées. GitHub republiera automatiquement le site dans quelques instants.";
+            // Conserve immédiatement les liens sur cet appareil.
+            // Ainsi, fermer puis rouvrir la fenêtre ne remet plus les champs à vide,
+            // même avant la fin du redéploiement GitHub Pages.
+            try {
+                localStorage.setItem(
+                    "legodingo13-youtube-fallbacks",
+                    JSON.stringify({
+                        videos,
+                        updatedAt: data.updatedAt
+                    })
+                );
+            } catch (error) {}
+
+            fallbackStatus.textContent = "Vidéos enregistrées. Les liens restent mémorisés immédiatement ; GitHub republiera ensuite le site dans quelques instants.";
             fallbackStatus.className = "tutorial-admin-status success";
         } catch (error) {
             console.error(error);
