@@ -1515,14 +1515,21 @@ h2 { margin: 10px 0 16px; }
 }
 
 .tutorial-modal-overlay {
-    position: fixed;
-    inset: 0;
+    position: fixed !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
     background: rgba(3,5,9,.72);
     backdrop-filter: blur(5px);
     z-index: 100100;
     display: grid;
     place-items: center;
     padding: 18px;
+    overflow: auto;
 }
 .tutorial-modal-overlay[hidden] { display: none; }
 .tutorial-modal {
@@ -5155,16 +5162,41 @@ youtube_admin_markup = r"""
     const passwordValidate = document.getElementById("youtubePasswordValidate");
 
     const fallbackModal = document.getElementById("youtubeFallbackModal");
+
+    // Les modales sont générées dans la grande carte du site.
+    // Cette carte utilise backdrop-filter, ce qui peut faire qu'un élément
+    // position:fixed soit centré par rapport à la page/carte au lieu du viewport.
+    // On les rattache donc directement à <body> pour garantir un centrage
+    // permanent au milieu de l'écran visible.
+    [passwordModal, fallbackModal].forEach(function (modal) {
+        if (modal && modal.parentElement !== document.body) {
+            document.body.appendChild(modal);
+        }
+    });
+
     const fallbackInputs = [1,2,3,4].map(number => document.getElementById(`youtubeFallback${number}`));
     const fallbackError = document.getElementById("youtubeFallbackError");
     const fallbackStatus = document.getElementById("youtubeFallbackStatus");
     const fallbackSave = document.getElementById("youtubeFallbackSave");
+
+    function lockPageScroll() {
+        document.documentElement.style.overflow = "hidden";
+    }
+
+    function unlockPageScrollIfNoYoutubeModal() {
+        const passwordOpen = passwordModal && !passwordModal.hidden;
+        const fallbackOpen = fallbackModal && !fallbackModal.hidden;
+        if (!passwordOpen && !fallbackOpen) {
+            document.documentElement.style.overflow = "";
+        }
+    }
 
     function openPasswordModal() {
         settingsPopover.hidden = true;
         passwordError.textContent = "";
         passwordInput.value = "";
         passwordModal.hidden = false;
+        lockPageScroll();
         setTimeout(() => passwordInput.focus(), 20);
     }
 
@@ -5172,12 +5204,14 @@ youtube_admin_markup = r"""
         passwordModal.hidden = true;
         passwordInput.value = "";
         passwordError.textContent = "";
+        unlockPageScrollIfNoYoutubeModal();
     }
 
     function closeFallbackModal() {
         fallbackModal.hidden = true;
         fallbackError.textContent = "";
         fallbackStatus.textContent = "";
+        unlockPageScrollIfNoYoutubeModal();
     }
 
     function base64ToBytes(value) {
@@ -5310,6 +5344,7 @@ youtube_admin_markup = r"""
 
         fallbackStatus.textContent = "";
         fallbackModal.hidden = false;
+        lockPageScroll();
         setTimeout(() => fallbackInputs[0].focus(), 20);
     }
 
