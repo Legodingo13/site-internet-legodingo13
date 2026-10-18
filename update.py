@@ -193,6 +193,92 @@ def get_latest_youtube_videos(limit=4):
         return []
 
 
+def youtube_video_id_from_url(value):
+    """Extrait l'identifiant d'une vidéo depuis les formats d'URL YouTube habituels."""
+    value = str(value or "").strip()
+    if not value:
+        return ""
+
+    patterns = [
+        r"(?:youtube\.com|youtube-nocookie\.com)/(?:watch\?(?:[^#\s]*&)?v=|shorts/|embed/|live/)([A-Za-z0-9_-]{6,20})",
+        r"youtu\.be/([A-Za-z0-9_-]{6,20})",
+        r"(?:^|[?&])v=([A-Za-z0-9_-]{6,20})(?:&|$)",
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, value, flags=re.IGNORECASE)
+        if match:
+            return match.group(1)
+
+    if re.fullmatch(r"[A-Za-z0-9_-]{6,20}", value):
+        return value
+
+    return ""
+
+
+def load_youtube_fallback_videos(limit=4):
+    """Lit les 4 vidéos choisies manuellement comme solution de secours."""
+    path = "youtube-fallbacks.json"
+    if not os.path.exists(path):
+        return []
+
+    try:
+        with open(path, "r", encoding="utf-8") as file:
+            data = json.load(file)
+    except Exception as error:
+        print("Impossible de lire youtube-fallbacks.json :", error)
+        return []
+
+    urls = data.get("videos", []) if isinstance(data, dict) else []
+    if not isinstance(urls, list):
+        return []
+
+    result = []
+    seen = set()
+
+    for index, url in enumerate(urls[:max(1, int(limit))], start=1):
+        video_id = youtube_video_id_from_url(url)
+        if not video_id or video_id in seen:
+            continue
+
+        seen.add(video_id)
+        result.append({
+            "id": video_id,
+            "title": f"Vidéo sélectionnée par Legodingo13 {index}",
+            "published": "",
+            "url": f"https://www.youtube.com/watch?v={video_id}",
+            "source": "fallback",
+        })
+
+    return result
+
+
+def merge_youtube_videos(recent_videos, fallback_videos, limit=4):
+    """Garde les vidéos récentes puis complète les places manquantes avec les secours."""
+    result = []
+    seen = set()
+
+    for video in list(recent_videos or []) + list(fallback_videos or []):
+        if not isinstance(video, dict):
+            continue
+
+        video_id = str(video.get("id", "") or "").strip()
+        if not re.fullmatch(r"[A-Za-z0-9_-]{6,20}", video_id):
+            continue
+        if video_id in seen:
+            continue
+
+        seen.add(video_id)
+        clean = dict(video)
+        clean.setdefault("source", "recent")
+        result.append(clean)
+
+        if len(result) >= max(1, int(limit)):
+            break
+
+    return result
+
+
 # =========================================================
 # STATISTIQUES DISCORD
 # =========================================================
@@ -222,7 +308,10 @@ online_count = format_number(discord_data.get("approximate_presence_count", "inc
 # =========================================================
 
 youtube_subscribers = get_youtube_subscribers()
-youtube_videos = get_latest_youtube_videos(4)
+youtube_recent_videos = get_latest_youtube_videos(4)
+youtube_fallback_videos = load_youtube_fallback_videos(4)
+youtube_videos = merge_youtube_videos(youtube_recent_videos, youtube_fallback_videos, 4)
+youtube_uses_fallback = any(video.get("source") == "fallback" for video in youtube_videos)
 youtube_display = (
     "Compteur temporairement indisponible"
     if youtube_subscribers == "indisponible"
@@ -983,9 +1072,108 @@ h2 { margin: 10px 0 16px; }
 .tutorial-settings-button:hover {
     opacity: 1;
     color: #ffd493;
-    border-color: rgba(255,212,147,.28);
-    background: rgba(255,212,147,.06);
+    border-color: transparent;
+    background: transparent;
 }
+
+/* Même bouton Paramètres FOE sur Tutoriels et YouTube */
+.tutorial-settings-button,
+.youtube-settings-button {
+    width: 36px;
+    height: 36px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    padding: 6px;
+    opacity: .88;
+    display: grid;
+    place-items: center;
+    transition: opacity .15s ease, transform .15s ease;
+}
+.tutorial-settings-button:hover,
+.youtube-settings-button:hover {
+    opacity: 1;
+    transform: scale(1.06);
+    border: 0;
+    background: transparent;
+}
+.tutorial-settings-button img,
+.youtube-settings-button img {
+    display: block;
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    pointer-events: none;
+}
+
+.youtube-settings-wrap {
+    position: relative;
+    width: 100%;
+    max-width: 900px;
+    margin: 34px auto 0;
+    min-height: 42px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: flex-end;
+}
+.youtube-settings-popover {
+    position: absolute;
+    right: 0;
+    bottom: 42px;
+    min-width: 235px;
+    padding: 8px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,.12);
+    background: rgba(24,26,33,.98);
+    box-shadow: 0 15px 35px rgba(0,0,0,.45);
+    z-index: 30;
+}
+.youtube-settings-popover[hidden] { display: none; }
+.youtube-settings-popover button {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 9px;
+    border: 0;
+    background: rgba(255,255,255,.06);
+    color: white;
+    font-weight: 700;
+}
+.youtube-settings-popover button:hover { background: rgba(255,255,255,.11); }
+
+.youtube-fallback-fields {
+    display: grid;
+    gap: 13px;
+    margin-top: 15px;
+}
+.youtube-fallback-field {
+    display: grid;
+    gap: 6px;
+}
+.youtube-fallback-field label {
+    color: #e8ebef;
+    font-size: 14px;
+    font-weight: 700;
+}
+.youtube-fallback-field input {
+    width: 100%;
+    min-height: 42px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,.16);
+    background: rgba(0,0,0,.22);
+    color: #fff;
+    padding: 10px 12px;
+    outline: none;
+}
+.youtube-fallback-field input:focus {
+    border-color: rgba(255,196,108,.58);
+}
+.youtube-admin-help {
+    margin: 4px 0 0;
+    color: #c7cdd6;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
 .tutorial-settings-popover {
     position: absolute;
     right: 0;
@@ -4875,6 +5063,358 @@ shell(
 )
 
 
+
+youtube_admin_markup = r"""
+<div class="youtube-settings-wrap">
+    <button
+        id="youtubeSettingsButton"
+        class="youtube-settings-button"
+        type="button"
+        data-foe-arrow
+        data-normal="foe_settings_normal.png"
+        data-hover="foe_settings_hover.png"
+        data-down="foe_settings_press.png"
+        aria-label="Paramètres de la page YouTube"
+        title="Paramètres"
+    ><img src="foe_settings_normal.png" alt=""></button>
+
+    <div id="youtubeSettingsPopover" class="youtube-settings-popover" hidden>
+        <button id="youtubeEditFallbacksButton" type="button">Modifier les vidéos de remplacement</button>
+    </div>
+</div>
+
+<div id="youtubePasswordModal" class="tutorial-modal-overlay" hidden>
+    <div class="tutorial-modal" role="dialog" aria-modal="true" aria-labelledby="youtubePasswordTitle">
+        <button type="button" class="tutorial-modal-close" data-close-youtube-password aria-label="Fermer">×</button>
+        <h3 id="youtubePasswordTitle">Modifier la page YouTube</h3>
+        <label for="youtubePasswordInput">Mot de passe :</label>
+        <input id="youtubePasswordInput" type="password" autocomplete="current-password">
+        <div id="youtubePasswordError" class="tutorial-modal-error"></div>
+        <div class="tutorial-modal-actions">
+            <button type="button" data-close-youtube-password>Annuler</button>
+            <button id="youtubePasswordValidate" class="primary" type="button">Valider</button>
+        </div>
+    </div>
+</div>
+
+<div id="youtubeFallbackModal" class="tutorial-modal-overlay" hidden>
+    <div class="tutorial-modal" role="dialog" aria-modal="true" aria-labelledby="youtubeFallbackTitle">
+        <button type="button" class="tutorial-modal-close" data-close-youtube-fallback aria-label="Fermer">×</button>
+        <h3 id="youtubeFallbackTitle">Vidéos de remplacement</h3>
+        <p class="youtube-admin-help">
+            Ajoute 4 liens YouTube. Ils serviront de vidéos de secours lorsqu'une partie ou la totalité des vidéos récentes n'est pas disponible automatiquement.
+        </p>
+
+        <div class="youtube-fallback-fields">
+            <div class="youtube-fallback-field">
+                <label for="youtubeFallback1">Vidéo de remplacement 1</label>
+                <input id="youtubeFallback1" type="url" inputmode="url" placeholder="https://www.youtube.com/watch?v=...">
+            </div>
+            <div class="youtube-fallback-field">
+                <label for="youtubeFallback2">Vidéo de remplacement 2</label>
+                <input id="youtubeFallback2" type="url" inputmode="url" placeholder="https://www.youtube.com/watch?v=...">
+            </div>
+            <div class="youtube-fallback-field">
+                <label for="youtubeFallback3">Vidéo de remplacement 3</label>
+                <input id="youtubeFallback3" type="url" inputmode="url" placeholder="https://www.youtube.com/watch?v=...">
+            </div>
+            <div class="youtube-fallback-field">
+                <label for="youtubeFallback4">Vidéo de remplacement 4</label>
+                <input id="youtubeFallback4" type="url" inputmode="url" placeholder="https://www.youtube.com/watch?v=...">
+            </div>
+        </div>
+
+        <div id="youtubeFallbackError" class="tutorial-modal-error"></div>
+        <div id="youtubeFallbackStatus" class="tutorial-admin-status"></div>
+
+        <div class="tutorial-modal-actions">
+            <button type="button" data-close-youtube-fallback>Annuler</button>
+            <button id="youtubeFallbackSave" class="primary" type="button">Enregistrer les 4 vidéos</button>
+        </div>
+    </div>
+</div>
+
+<script src="admin-config.js"></script>
+<script>
+(function () {
+    const REPO_OWNER = "Legodingo13";
+    const REPO_NAME = "site-internet-legodingo13";
+    const REPO_BRANCH = "main";
+    const DATA_PATH = "youtube-fallbacks.json";
+    const API_URL = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${DATA_PATH}`;
+
+    let adminToken = null;
+
+    const settingsButton = document.getElementById("youtubeSettingsButton");
+    const settingsPopover = document.getElementById("youtubeSettingsPopover");
+    const editButton = document.getElementById("youtubeEditFallbacksButton");
+
+    const passwordModal = document.getElementById("youtubePasswordModal");
+    const passwordInput = document.getElementById("youtubePasswordInput");
+    const passwordError = document.getElementById("youtubePasswordError");
+    const passwordValidate = document.getElementById("youtubePasswordValidate");
+
+    const fallbackModal = document.getElementById("youtubeFallbackModal");
+    const fallbackInputs = [1,2,3,4].map(number => document.getElementById(`youtubeFallback${number}`));
+    const fallbackError = document.getElementById("youtubeFallbackError");
+    const fallbackStatus = document.getElementById("youtubeFallbackStatus");
+    const fallbackSave = document.getElementById("youtubeFallbackSave");
+
+    function openPasswordModal() {
+        settingsPopover.hidden = true;
+        passwordError.textContent = "";
+        passwordInput.value = "";
+        passwordModal.hidden = false;
+        setTimeout(() => passwordInput.focus(), 20);
+    }
+
+    function closePasswordModal() {
+        passwordModal.hidden = true;
+        passwordInput.value = "";
+        passwordError.textContent = "";
+    }
+
+    function closeFallbackModal() {
+        fallbackModal.hidden = true;
+        fallbackError.textContent = "";
+        fallbackStatus.textContent = "";
+    }
+
+    function base64ToBytes(value) {
+        const binary = atob(value);
+        return Uint8Array.from(binary, char => char.charCodeAt(0));
+    }
+
+    async function decryptAdminToken(password) {
+        const config = window.LEGODINGO13_ADMIN_CONFIG;
+        if (!config || !config.ciphertext || !config.salt || !config.iv) {
+            throw new Error("CONFIG_ABSENTE");
+        }
+
+        const encoder = new TextEncoder();
+        const material = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, ["deriveKey"]);
+
+        const key = await crypto.subtle.deriveKey(
+            {
+                name: "PBKDF2",
+                salt: base64ToBytes(config.salt),
+                iterations: Number(config.iterations || 310000),
+                hash: "SHA-256"
+            },
+            material,
+            { name: "AES-GCM", length: 256 },
+            false,
+            ["decrypt"]
+        );
+
+        const clear = await crypto.subtle.decrypt(
+            { name: "AES-GCM", iv: base64ToBytes(config.iv) },
+            key,
+            base64ToBytes(config.ciphertext)
+        );
+
+        return new TextDecoder().decode(clear).trim();
+    }
+
+    function isValidYoutubeUrl(value) {
+        const text = String(value || "").trim();
+        if (!text) return false;
+
+        return [
+            /(?:youtube\.com|youtube-nocookie\.com)\/watch\?(?:[^#\s]*&)?v=[A-Za-z0-9_-]{6,20}/i,
+            /(?:youtube\.com|youtube-nocookie\.com)\/(?:shorts|embed|live)\/[A-Za-z0-9_-]{6,20}/i,
+            /youtu\.be\/[A-Za-z0-9_-]{6,20}/i
+        ].some(pattern => pattern.test(text));
+    }
+
+    async function loadFallbackLinks() {
+        fallbackError.textContent = "";
+        fallbackStatus.textContent = "Chargement…";
+        let videos = ["", "", "", ""];
+
+        try {
+            const response = await fetch("youtube-fallbacks.json?ts=" + Date.now(), { cache: "no-store" });
+            if (response.ok) {
+                const data = await response.json();
+                if (data && Array.isArray(data.videos)) {
+                    videos = [0,1,2,3].map(index => String(data.videos[index] || ""));
+                }
+            }
+        } catch (error) {
+            console.warn(error);
+        }
+
+        fallbackInputs.forEach((input, index) => {
+            input.value = videos[index] || "";
+        });
+
+        fallbackStatus.textContent = "";
+        fallbackModal.hidden = false;
+        setTimeout(() => fallbackInputs[0].focus(), 20);
+    }
+
+    async function validatePassword() {
+        const password = passwordInput.value;
+        passwordError.textContent = "";
+
+        if (!password) {
+            passwordError.textContent = "Entre le mot de passe.";
+            return;
+        }
+
+        passwordValidate.disabled = true;
+        passwordValidate.textContent = "Vérification…";
+
+        try {
+            const token = await decryptAdminToken(password);
+
+            if (!(token.startsWith("github_pat_") || token.startsWith("ghp_"))) {
+                throw new Error("TOKEN_INVALIDE");
+            }
+
+            adminToken = token;
+            closePasswordModal();
+            await loadFallbackLinks();
+        } catch (error) {
+            if (String(error.message) === "CONFIG_ABSENTE") {
+                passwordError.textContent = "La configuration administrateur n'est pas encore installée sur le site.";
+            } else {
+                passwordError.textContent = "Mot de passe incorrect.";
+            }
+        } finally {
+            passwordValidate.disabled = false;
+            passwordValidate.textContent = "Valider";
+        }
+    }
+
+    function bytesToBase64(bytes) {
+        let binary = "";
+        const chunk = 0x8000;
+        for (let i = 0; i < bytes.length; i += chunk) {
+            binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+        }
+        return btoa(binary);
+    }
+
+    function utf8ToBase64(value) {
+        return bytesToBase64(new TextEncoder().encode(value));
+    }
+
+    async function githubRequest(url, options = {}) {
+        const headers = Object.assign({
+            "Accept": "application/vnd.github+json",
+            "Authorization": `Bearer ${adminToken}`,
+            "X-GitHub-Api-Version": "2022-11-28"
+        }, options.headers || {});
+
+        const response = await fetch(url, Object.assign({}, options, { headers }));
+
+        if (!response.ok) {
+            const details = await response.text();
+            throw new Error(`GitHub ${response.status}: ${details}`);
+        }
+
+        return response.status === 204 ? null : response.json();
+    }
+
+    async function saveFallbackLinks() {
+        fallbackError.textContent = "";
+        fallbackStatus.textContent = "";
+
+        if (!adminToken) {
+            fallbackError.textContent = "La session administrateur n'est plus active.";
+            return;
+        }
+
+        const videos = fallbackInputs.map(input => input.value.trim());
+
+        if (videos.some(value => !value)) {
+            fallbackError.textContent = "Les 4 champs doivent contenir une vidéo YouTube.";
+            return;
+        }
+
+        const invalidIndex = videos.findIndex(value => !isValidYoutubeUrl(value));
+        if (invalidIndex !== -1) {
+            fallbackError.textContent = `Le lien de la vidéo ${invalidIndex + 1} n'est pas reconnu comme un lien YouTube valide.`;
+            fallbackInputs[invalidIndex].focus();
+            return;
+        }
+
+        fallbackSave.disabled = true;
+        fallbackSave.textContent = "Enregistrement…";
+        fallbackStatus.textContent = "Enregistrement sur GitHub…";
+
+        try {
+            let sha = null;
+
+            try {
+                const current = await githubRequest(API_URL + "?ref=" + encodeURIComponent(REPO_BRANCH));
+                sha = current.sha;
+            } catch (error) {
+                if (!String(error.message).includes("GitHub 404")) throw error;
+            }
+
+            const data = {
+                version: 1,
+                videos,
+                updatedAt: new Date().toISOString()
+            };
+
+            const payload = {
+                message: "Mise à jour des vidéos de remplacement YouTube",
+                content: utf8ToBase64(JSON.stringify(data, null, 2)),
+                branch: REPO_BRANCH
+            };
+
+            if (sha) payload.sha = sha;
+
+            await githubRequest(API_URL, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            fallbackStatus.textContent = "Vidéos enregistrées. GitHub republiera automatiquement le site dans quelques instants.";
+            fallbackStatus.className = "tutorial-admin-status success";
+        } catch (error) {
+            console.error(error);
+            fallbackError.textContent = "Échec de l'enregistrement sur GitHub. Vérifie le token et sa permission Contents: Read and write.";
+        } finally {
+            fallbackSave.disabled = false;
+            fallbackSave.textContent = "Enregistrer les 4 vidéos";
+        }
+    }
+
+    settingsButton.addEventListener("click", function () {
+        settingsPopover.hidden = !settingsPopover.hidden;
+    });
+
+    editButton.addEventListener("click", openPasswordModal);
+    passwordValidate.addEventListener("click", validatePassword);
+    passwordInput.addEventListener("keydown", function (event) {
+        if (event.key === "Enter") validatePassword();
+    });
+    fallbackSave.addEventListener("click", saveFallbackLinks);
+
+    document.querySelectorAll("[data-close-youtube-password]").forEach(button => {
+        button.addEventListener("click", closePasswordModal);
+    });
+
+    document.querySelectorAll("[data-close-youtube-fallback]").forEach(button => {
+        button.addEventListener("click", closeFallbackModal);
+    });
+
+    passwordModal.addEventListener("click", event => {
+        if (event.target === passwordModal) closePasswordModal();
+    });
+
+    fallbackModal.addEventListener("click", event => {
+        if (event.target === fallbackModal) closeFallbackModal();
+    });
+})();
+</script>
+"""
+
 # YOUTUBE
 youtube_video_cards = []
 for video in youtube_videos[:4]:
@@ -4897,10 +5437,15 @@ for video in youtube_videos[:4]:
     """)
 
 if youtube_video_cards:
+    if youtube_uses_fallback:
+        youtube_latest_subtitle = "Les vidéos récentes sont complétées automatiquement par ta sélection de remplacement lorsque nécessaire."
+    else:
+        youtube_latest_subtitle = "Les 4 vidéos les plus récentes de la chaîne, mises à jour automatiquement."
+
     youtube_recent_markup = f"""
     <section class="youtube-latest" aria-labelledby="youtubeLatestTitle">
         <h2 class="youtube-latest-title" id="youtubeLatestTitle">Vidéos récentes</h2>
-        <p class="youtube-latest-subtitle">Les 4 vidéos les plus récentes de la chaîne, mises à jour automatiquement.</p>
+        <p class="youtube-latest-subtitle">{youtube_latest_subtitle}</p>
         <div class="youtube-carousel" data-youtube-carousel>
             <button type="button" class="youtube-carousel-arrow youtube-carousel-prev" data-youtube-prev data-foe-arrow data-normal="foe_carousel_left_normal.png" data-hover="foe_carousel_left_hover.png" data-down="foe_carousel_left_push.png" aria-label="Vidéos précédentes" title="Vidéos précédentes"><img src="foe_carousel_left_normal.png" alt=""></button>
             <div class="youtube-video-track" data-youtube-track>{''.join(youtube_video_cards)}</div>
@@ -4909,10 +5454,10 @@ if youtube_video_cards:
     </section>
     """
 else:
-    youtube_recent_markup = f"""
+    youtube_recent_markup = """
     <section class="youtube-latest">
-        <h2 class="youtube-latest-title">Vidéos récentes</h2>
-        <div class="youtube-video-empty">Les dernières vidéos sont temporairement indisponibles. <a href="{YOUTUBE_URL}" target="_blank" rel="noopener noreferrer">Ouvrir la chaîne YouTube</a>.</div>
+        <h2 class="youtube-latest-title">Sélection de vidéos</h2>
+        <div class="youtube-video-empty">Aucune vidéo de remplacement n'est encore configurée. Utilise le bouton Paramètres en bas à droite de cette page pour ajouter 4 vidéos de secours.</div>
     </section>
     """
 
@@ -4930,6 +5475,7 @@ youtube_body = f"""
     <a class="tile" href="{FOE_URL}" target="_blank" rel="noopener noreferrer"><img src="foe_logo.png" loading="lazy" decoding="async" class="tile-logo foe-logo" alt="Forge of Empires"><div class="tile-title">Forge of Empires</div><div class="tile-detail">Accéder au site officiel francophone du jeu</div></a>
     <a class="tile" href="tutoriels.html"><img src="tutoriels_logo.png" loading="lazy" decoding="async" class="tile-logo tutorials-logo" alt="Tutoriels de jeu Legodingo13"><div class="tile-title">Tutoriels de jeu</div><div class="tile-detail">Accéder à la page des tutoriels de jeu</div></a>
 </div>
+{youtube_admin_markup}
 """
 shell(
     "youtube.html",
@@ -4968,7 +5514,17 @@ Retrouve ici les tutoriels et guides de jeu publiés par Legodingo13.
 <div id="tutorialCopyToast" class="tutorial-copy-toast" role="status" aria-live="polite" hidden></div>
 
 <div class="tutorial-settings-wrap">
-    <button id="tutorialSettingsButton" class="tutorial-settings-button" type="button" aria-label="Paramètres de la page" title="Paramètres">⚙</button>
+    <button
+        id="tutorialSettingsButton"
+        class="tutorial-settings-button"
+        type="button"
+        data-foe-arrow
+        data-normal="foe_settings_normal.png"
+        data-hover="foe_settings_hover.png"
+        data-down="foe_settings_press.png"
+        aria-label="Paramètres de la page"
+        title="Paramètres"
+    ><img src="foe_settings_normal.png" alt=""></button>
     <div id="tutorialSettingsPopover" class="tutorial-settings-popover" hidden>
         <button id="tutorialEditPageButton" type="button">Modifier la page</button>
     </div>
@@ -5690,6 +6246,14 @@ assets = [
     "foe_close_normal.png",
     "foe_close_hover.png",
     "foe_close_press.png",
+
+    # Bouton Paramètres FOE utilisé sur Tutoriels et YouTube
+    "foe_settings_normal.png",
+    "foe_settings_hover.png",
+    "foe_settings_press.png",
+
+    # Vidéos YouTube de remplacement administrables
+    "youtube-fallbacks.json",
 
     # Boutons FOE pour les carrousels d'images et de vidéos
     "foe_carousel_left_normal.png",
