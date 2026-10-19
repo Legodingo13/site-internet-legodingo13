@@ -1535,6 +1535,10 @@ h2 { margin: 10px 0 16px; }
 .tutorial-modal {
     position: relative;
     width: min(100%, 480px);
+    max-height: calc(100dvh - 36px);
+    margin: auto;
+    overflow: auto;
+    overscroll-behavior: contain;
     border-radius: 18px;
     border: 1px solid rgba(255,210,130,.24);
     background: linear-gradient(145deg, rgba(26,29,38,.99), rgba(34,23,21,.99));
@@ -2260,6 +2264,10 @@ h2 { margin: 10px 0 16px; }
 .shortcut-install-dialog {
     position: relative;
     width: min(620px, 96vw);
+    max-height: calc(100dvh - 36px);
+    margin: auto;
+    overflow: auto;
+    overscroll-behavior: contain;
     border-radius: 20px;
     padding: 22px;
     background: #1b2028;
@@ -2745,13 +2753,6 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
     const passwordError = document.getElementById("tutorialPasswordError");
     const passwordValidate = document.getElementById("tutorialPasswordValidate");
 
-    // Comme pour les fenêtres YouTube, on sort la fenêtre de mot de passe
-    // du grand conteneur du site. Ainsi son position:fixed est calculé
-    // par rapport à l'écran visible et non par rapport à la carte/page.
-    if (passwordModal && passwordModal.parentElement !== document.body) {
-        document.body.appendChild(passwordModal);
-    }
-
     const confirmModal = document.getElementById("tutorialConfirmModal");
     const confirmTitle = document.getElementById("tutorialConfirmTitle");
     const confirmText = document.getElementById("tutorialConfirmText");
@@ -2771,6 +2772,27 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
 
     const orderMenuModal = document.getElementById("tutorialOrderMenuModal");
     const orderMenuList = document.getElementById("tutorialOrderMenuList");
+
+    // Toutes les fenêtres de gestion des tutoriels doivent être de vraies
+    // fenêtres liées au viewport. La grande carte du site utilise backdrop-filter,
+    // ce qui crée un containing block pour les descendants position:fixed dans
+    // certains navigateurs. Si une modale reste dans .card, elle peut donc être
+    // centrée par rapport à la carte (ou décalée après défilement) au lieu de
+    // l'écran visible. On rattache systématiquement chaque overlay directement
+    // à <body>, comme c'est déjà le cas pour les fenêtres YouTube et PWA.
+    const tutorialViewportModals = [
+        passwordModal,
+        confirmModal,
+        videoModal,
+        deleteMenuModal,
+        orderMenuModal
+    ];
+
+    tutorialViewportModals.forEach(function (modal) {
+        if (modal && modal.parentElement !== document.body) {
+            document.body.appendChild(modal);
+        }
+    });
 
     function uid(prefix) {
         return prefix + "_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8);
