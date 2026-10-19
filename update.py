@@ -944,12 +944,51 @@ h2 { margin: 10px 0 16px; }
     padding: 10px 58px 42px;
 }
 .tutorial-carousel-slide.active { display: block; }
-.tutorial-carousel-slide .tutorial-image-open { background: transparent; }
+.tutorial-carousel-slide .tutorial-image-open {
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
 .tutorial-carousel-slide .tutorial-content-image {
-    width: 100%;
+    /* Ne jamais agrandir artificiellement une petite image sur PC. */
+    width: auto;
+    max-width: 100%;
     max-height: 650px;
     object-fit: contain;
     box-shadow: none;
+}
+
+/*
+   Taille d'affichage choisie dans la gestion des tutoriels.
+   Ce réglage vise uniquement les écrans d'ordinateur/tablette larges :
+   sur téléphone on conserve volontairement l'affichage plein largeur actuel.
+*/
+@media (min-width: 761px) {
+    .tutorial-carousel.tutorial-image-size-medium .tutorial-carousel-slide .tutorial-content-image {
+        max-width: min(72%, 720px);
+    }
+    .tutorial-carousel.tutorial-image-size-small .tutorial-carousel-slide .tutorial-content-image {
+        max-width: min(48%, 460px);
+    }
+
+    .tutorial-single-image.tutorial-image-size-medium .tutorial-content-image {
+        max-width: min(72%, 720px);
+    }
+    .tutorial-single-image.tutorial-image-size-small .tutorial-content-image {
+        max-width: min(48%, 460px);
+    }
+
+    .tutorial-image-grid.tutorial-image-size-medium {
+        width: min(82%, 760px);
+        margin-left: auto;
+        margin-right: auto;
+    }
+    .tutorial-image-grid.tutorial-image-size-small {
+        width: min(62%, 560px);
+        margin-left: auto;
+        margin-right: auto;
+    }
 }
 .tutorial-carousel-arrow,
 .youtube-carousel-arrow {
@@ -1410,6 +1449,7 @@ h2 { margin: 10px 0 16px; }
 }
 .tutorial-image-admin-head strong { margin-right: auto; }
 .tutorial-image-layout-select,
+.tutorial-image-size-select,
 .tutorial-image-add-more {
     min-height: 34px;
     border-radius: 8px;
@@ -2166,6 +2206,7 @@ h2 { margin: 10px 0 16px; }
 @media (max-width:760px) {
     body { padding:18px 10px; background-attachment:scroll; }
     .tutorial-carousel-slide { padding: 8px 48px 34px; }
+    .tutorial-carousel-slide .tutorial-content-image { width: 100%; max-width: 100%; }
     .tutorial-carousel-arrow, .youtube-carousel-arrow { width: 46px; height: 46px; }
     .youtube-summary { grid-template-columns: 1fr; gap: 14px; }
     .youtube-carousel { padding: 0 48px; }
@@ -2855,6 +2896,7 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
                         title: typeof image.title === "string" ? image.title : ""
                     }));
                     block.layout = block.layout === "carousel" ? "carousel" : "grid";
+                    block.displaySize = ["large", "medium", "small"].includes(block.displaySize) ? block.displaySize : "large";
                     delete block.data;
                     delete block.alt;
                     delete block.title;
@@ -3107,6 +3149,8 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
         if (block.type === "image") {
             const images = Array.isArray(block.images) ? block.images.filter(image => String(image?.data || "").startsWith("data:image/")) : [];
             if (!images.length) return "";
+            const displaySize = ["large", "medium", "small"].includes(block.displaySize) ? block.displaySize : "large";
+            const displaySizeClass = `tutorial-image-size-${displaySize}`;
 
             /*
                Avec une seule image, on conserve volontairement l'affichage
@@ -3117,7 +3161,7 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
                 const image = images[0];
                 const title = String(image.title || "").trim();
                 const alt = title || image.alt || "Image du tutoriel";
-                return `<div class="tutorial-public-block tutorial-single-image">
+                return `<div class="tutorial-public-block tutorial-single-image ${displaySizeClass}">
                     <img class="tutorial-content-image" src="${escapeHtml(image.data)}" alt="${escapeHtml(alt)}" loading="lazy" decoding="async">
                     ${title ? `<div class="tutorial-image-caption">${escapeHtml(title)}</div>` : ""}
                 </div>`;
@@ -3134,7 +3178,7 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
                         ${title ? `<div class="tutorial-image-caption">${escapeHtml(title)}</div>` : ""}
                     </div>`;
                 }).join("");
-                return `<div class="tutorial-public-block tutorial-carousel" data-carousel data-carousel-current="0">
+                return `<div class="tutorial-public-block tutorial-carousel ${displaySizeClass}" data-carousel data-carousel-current="0">
                     <div class="tutorial-carousel-stage">${slides}</div>
                     <button type="button" class="tutorial-carousel-arrow tutorial-carousel-prev" data-carousel-prev data-foe-arrow data-normal="foe_carousel_left_normal.png" data-hover="foe_carousel_left_hover.png" data-down="foe_carousel_left_push.png" aria-label="Image précédente" title="Image précédente"><img src="foe_carousel_left_normal.png" alt=""></button>
                     <button type="button" class="tutorial-carousel-arrow tutorial-carousel-next" data-carousel-next data-foe-arrow data-normal="foe_carousel_right_normal.png" data-hover="foe_carousel_right_hover.png" data-down="foe_carousel_right_push.png" aria-label="Image suivante" title="Image suivante"><img src="foe_carousel_right_normal.png" alt=""></button>
@@ -3152,7 +3196,7 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
                     ${title ? `<figcaption class="tutorial-image-caption">${escapeHtml(title)}</figcaption>` : ""}
                 </figure>`;
             }).join("");
-            return `<div class="tutorial-public-block tutorial-image-grid">${cells}</div>`;
+            return `<div class="tutorial-public-block tutorial-image-grid ${displaySizeClass}">${cells}</div>`;
         }
         if (block.type === "video") {
             const id = youtubeId(block.url);
@@ -3255,6 +3299,11 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
                     <select class="tutorial-image-layout-select" data-action="image-layout" data-menu-id="${menu.id}" data-block-id="${block.id}" title="Mode d'affichage">
                         <option value="grid" ${block.layout !== "carousel" ? "selected" : ""}>Photos côte à côte</option>
                         <option value="carousel" ${block.layout === "carousel" ? "selected" : ""}>Déroulant d'images</option>
+                    </select>
+                    <select class="tutorial-image-size-select" data-action="image-display-size" data-menu-id="${menu.id}" data-block-id="${block.id}" title="Taille d'affichage sur PC. Sur téléphone, l'affichage reste adapté à toute la largeur.">
+                        <option value="large" ${(block.displaySize || "large") === "large" ? "selected" : ""}>Taille PC : grande</option>
+                        <option value="medium" ${block.displaySize === "medium" ? "selected" : ""}>Taille PC : moyenne</option>
+                        <option value="small" ${block.displaySize === "small" ? "selected" : ""}>Taille PC : petite</option>
                     </select>
                     <button type="button" class="tutorial-image-add-more" data-action="add-images-to-block" data-menu-id="${menu.id}" data-block-id="${block.id}">+ Ajouter des images</button>
                     <input type="file" accept="image/*" multiple data-image-block-input="${block.id}" data-menu-id="${menu.id}" hidden>
@@ -3683,7 +3732,7 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
                         const data = await compressImage(file, 1600, 1600, .84, 650 * 1024);
                         images.push({ id: uid("img"), data, alt: file.name || "Image du tutoriel", title: "" });
                     }
-                    menu.blocks.push({ id: uid("image"), type: "image", layout: "grid", images });
+                    menu.blocks.push({ id: uid("image"), type: "image", layout: "grid", displaySize: "large", images });
                     openMenuId = menu.id;
                     renderAdmin();
                     markDirty();
@@ -3777,6 +3826,16 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
                 const block = findBlock(menu, select.dataset.blockId);
                 if (!block || block.type !== "image") return;
                 block.layout = select.value === "carousel" ? "carousel" : "grid";
+                markDirty();
+            });
+        });
+
+        accordion.querySelectorAll('[data-action="image-display-size"]').forEach(select => {
+            select.addEventListener("change", () => {
+                const menu = findMenu(select.dataset.menuId);
+                const block = findBlock(menu, select.dataset.blockId);
+                if (!block || block.type !== "image") return;
+                block.displaySize = ["large", "medium", "small"].includes(select.value) ? select.value : "large";
                 markDirty();
             });
         });
