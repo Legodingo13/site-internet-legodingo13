@@ -898,7 +898,7 @@ h2 { margin: 10px 0 16px; }
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr));
     gap: 12px;
-    align-items: stretch;
+    align-items: start;
 }
 .tutorial-image-open {
     display: block;
@@ -912,11 +912,16 @@ h2 { margin: 10px 0 16px; }
 }
 .tutorial-image-grid .tutorial-image-open {
     min-height: 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 .tutorial-image-grid .tutorial-content-image {
-    width: 100%;
-    height: 100%;
-    min-height: 180px;
+    /* Garde la définition naturelle : une petite image n'est jamais étirée. */
+    width: auto;
+    max-width: 100%;
+    height: auto;
+    min-height: 0;
     max-height: 430px;
     object-fit: contain;
     box-shadow: none;
@@ -965,6 +970,10 @@ h2 { margin: 10px 0 16px; }
    sur téléphone on conserve volontairement l'affichage plein largeur actuel.
 */
 @media (min-width: 761px) {
+    /* Déroulant d'images */
+    .tutorial-carousel.tutorial-image-size-large .tutorial-carousel-slide .tutorial-content-image {
+        max-width: min(100%, 1050px);
+    }
     .tutorial-carousel.tutorial-image-size-medium .tutorial-carousel-slide .tutorial-content-image {
         max-width: min(72%, 720px);
     }
@@ -972,22 +981,48 @@ h2 { margin: 10px 0 16px; }
         max-width: min(48%, 460px);
     }
 
+    /* Image seule : la taille choisie agit directement sur l'image. */
+    .tutorial-single-image.tutorial-image-size-large .tutorial-content-image {
+        width: auto;
+        max-width: min(100%, 980px);
+    }
     .tutorial-single-image.tutorial-image-size-medium .tutorial-content-image {
-        max-width: min(72%, 720px);
+        width: auto;
+        max-width: min(72%, 680px);
     }
     .tutorial-single-image.tutorial-image-size-small .tutorial-content-image {
-        max-width: min(48%, 460px);
+        width: auto;
+        max-width: min(46%, 420px);
     }
 
+    /*
+       Photos côte à côte : on dimensionne chaque vignette, pas seulement
+       le conteneur de la galerie. Ainsi "Petite" produit réellement de
+       petites images même lorsque plusieurs photos sont affichées.
+    */
+    .tutorial-image-grid.tutorial-image-size-large {
+        grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr));
+    }
     .tutorial-image-grid.tutorial-image-size-medium {
-        width: min(82%, 760px);
-        margin-left: auto;
-        margin-right: auto;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 320px));
+        justify-content: center;
     }
     .tutorial-image-grid.tutorial-image-size-small {
-        width: min(62%, 560px);
-        margin-left: auto;
-        margin-right: auto;
+        grid-template-columns: repeat(auto-fit, minmax(130px, 220px));
+        justify-content: center;
+    }
+
+    .tutorial-image-grid.tutorial-image-size-medium .tutorial-image-open {
+        min-height: 140px;
+    }
+    .tutorial-image-grid.tutorial-image-size-small .tutorial-image-open {
+        min-height: 105px;
+    }
+    .tutorial-image-grid.tutorial-image-size-medium .tutorial-content-image {
+        max-height: 320px;
+    }
+    .tutorial-image-grid.tutorial-image-size-small .tutorial-content-image {
+        max-height: 220px;
     }
 }
 .tutorial-carousel-arrow,
@@ -2207,6 +2242,14 @@ h2 { margin: 10px 0 16px; }
     body { padding:18px 10px; background-attachment:scroll; }
     .tutorial-carousel-slide { padding: 8px 48px 34px; }
     .tutorial-carousel-slide .tutorial-content-image { width: 100%; max-width: 100%; }
+    /* Sur téléphone, on conserve le rendu historique des galeries. */
+    .tutorial-image-grid { align-items: stretch; }
+    .tutorial-image-grid .tutorial-content-image {
+        width: 100%;
+        height: 100%;
+        min-height: 180px;
+        max-height: 430px;
+    }
     .tutorial-carousel-arrow, .youtube-carousel-arrow { width: 46px; height: 46px; }
     .youtube-summary { grid-template-columns: 1fr; gap: 14px; }
     .youtube-carousel { padding: 0 48px; }
@@ -3300,7 +3343,7 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
                         <option value="grid" ${block.layout !== "carousel" ? "selected" : ""}>Photos côte à côte</option>
                         <option value="carousel" ${block.layout === "carousel" ? "selected" : ""}>Déroulant d'images</option>
                     </select>
-                    <select class="tutorial-image-size-select" data-action="image-display-size" data-menu-id="${menu.id}" data-block-id="${block.id}" title="Taille d'affichage sur PC. Sur téléphone, l'affichage reste adapté à toute la largeur.">
+                    <select class="tutorial-image-size-select" data-action="image-display-size" data-menu-id="${menu.id}" data-block-id="${block.id}" title="Taille des images sur PC (image seule, côte à côte ou déroulant). Sur téléphone, l'affichage reste adapté à la largeur disponible.">
                         <option value="large" ${(block.displaySize || "large") === "large" ? "selected" : ""}>Taille PC : grande</option>
                         <option value="medium" ${block.displaySize === "medium" ? "selected" : ""}>Taille PC : moyenne</option>
                         <option value="small" ${block.displaySize === "small" ? "selected" : ""}>Taille PC : petite</option>
