@@ -21,7 +21,8 @@
               "title": ""
             }
           ],
-          "layout": "grid"
+          "layout": "grid",
+          "displaySize": "large"
         },
         {
           "id": "text_mujnpxlm_ddwjfr",
@@ -63,7 +64,8 @@
               "alt": "X_SS_BronzeAge_Landmark2-450a47d93.png",
               "title": "Statue de Zeus"
             }
-          ]
+          ],
+          "displaySize": "large"
         },
         {
           "id": "text_mujqt1eg_l37c61",
@@ -99,7 +101,8 @@
               "alt": "W_SS_MultiAge_GR25A2-dd6c5cf66.png",
               "title": "Nouvelle Place Echec et Mat niveau 2"
             }
-          ]
+          ],
+          "displaySize": "large"
         },
         {
           "id": "text_mujp0ouf_3ik96u",
@@ -138,7 +141,8 @@
               "title": ""
             }
           ],
-          "layout": "grid"
+          "layout": "grid",
+          "displaySize": "large"
         }
       ],
       "slug": "le-fonctionnement-du-1-9",
@@ -173,7 +177,8 @@
               "title": ""
             }
           ],
-          "layout": "grid"
+          "layout": "grid",
+          "displaySize": "large"
         },
         {
           "id": "text_mu9sndi9_oj1l54",
@@ -197,7 +202,8 @@
               "title": ""
             }
           ],
-          "layout": "grid"
+          "layout": "grid",
+          "displaySize": "large"
         },
         {
           "id": "text_mu9tipi1_ekpdtq",
@@ -215,7 +221,8 @@
               "title": ""
             }
           ],
-          "layout": "grid"
+          "layout": "grid",
+          "displaySize": "large"
         },
         {
           "id": "text_mu9t0ref_mria9n",
@@ -233,7 +240,8 @@
               "title": ""
             }
           ],
-          "layout": "grid"
+          "layout": "grid",
+          "displaySize": "large"
         },
         {
           "id": "text_mu9u5ief_qb2eir",
@@ -251,7 +259,8 @@
               "title": ""
             }
           ],
-          "layout": "grid"
+          "layout": "grid",
+          "displaySize": "large"
         },
         {
           "id": "text_mu9vn60g_vt7x2k",
@@ -279,7 +288,8 @@
               "title": ""
             }
           ],
-          "layout": "grid"
+          "layout": "grid",
+          "displaySize": "large"
         }
       ],
       "slug": "optimiser-l-espace-dans-une-ville",
@@ -313,7 +323,8 @@
               "alt": "X_SS_OceanicFuture_Landmark3-a9e0bf538.png",
               "title": "Galaxie Bleue (GB)"
             }
-          ]
+          ],
+          "displaySize": "large"
         },
         {
           "id": "text_mupq1gvx_847piy",
@@ -331,7 +342,8 @@
               "alt": "W_SS_MultiAge_LTE24A11-f74f2cf91.png",
               "title": "Marché éternel - Horizon galactique"
             }
-          ]
+          ],
+          "displaySize": "large"
         },
         {
           "id": "text_mupqh2y8_8vvb1s",
@@ -365,7 +377,8 @@
               "alt": "Image2.png",
               "title": "Exemple pour une cité TPS"
             }
-          ]
+          ],
+          "displaySize": "large"
         }
       ]
     },
@@ -373,7 +386,7 @@
       "id": "menu_mvfap0yu_uydgza",
       "title": "Le fonctionnement du CBG",
       "slug": "le-fonctionnement-du-cbg",
-      "updatedAt": "2026-10-19T20:17:34.279Z",
+      "updatedAt": "2026-10-19T20:46:14.073Z",
       "shareTitle": "",
       "shareDescription": "",
       "shareImage": "",
@@ -429,7 +442,8 @@
               "alt": "06_Diamant.png",
               "title": "Ligue Diamant"
             }
-          ]
+          ],
+          "displaySize": "large"
         },
         {
           "id": "text_mvfgwmym_wferjs",
@@ -453,7 +467,8 @@
               "alt": "367c072823112a7e2095cdf24bcbd3c0.webp",
               "title": ""
             }
-          ]
+          ],
+          "displaySize": "large"
         },
         {
           "id": "text_mvfhgtyb_dvaij1",
@@ -482,7 +497,8 @@
               "alt": "CARTE_FOND_RECONSTITUEE_2500x1960.png",
               "title": "l'Archipel des cascades"
             }
-          ]
+          ],
+          "displaySize": "large"
         },
         {
           "id": "text_mvfcksf6_cidkir",
@@ -505,7 +521,8 @@
               "alt": "Startingspotgbg.png",
               "title": ""
             }
-          ]
+          ],
+          "displaySize": "large"
         },
         {
           "id": "text_mvfeqfne_6vclms",
@@ -529,7 +546,8 @@
               "alt": "cbg11.png",
               "title": ""
             }
-          ]
+          ],
+          "displaySize": "large"
         },
         {
           "id": "text_mvff5apk_1m1fyz",
@@ -553,7 +571,8 @@
               "alt": "0a48028bed4e2cab5baad1b903d7ff98.webp",
               "title": ""
             }
-          ]
+          ],
+          "displaySize": "large"
         },
         {
           "id": "text_mvffakz5_x3hcs9",
@@ -576,7 +595,8 @@
               "alt": "Gbgconquestflag2.png",
               "title": ""
             }
-          ]
+          ],
+          "displaySize": "large"
         },
         {
           "id": "image_mvfk1op5_bqpt9f",
@@ -589,7 +609,8 @@
               "alt": "Gbgconquestflag1.png",
               "title": ""
             }
-          ]
+          ],
+          "displaySize": "large"
         },
         {
           "id": "text_mvfk0bxt_z7tzj1",
@@ -607,7 +628,8 @@
               "alt": "image (2).png",
               "title": "Exemple de secteurs à 20%"
             }
-          ]
+          ],
+          "displaySize": "large"
         },
         {
           "id": "text_mvfk899v_915hxk",
@@ -642,7 +664,8 @@
               "alt": "guild_battlegrounds_sector_buildings_guild_command_post_fortified_gbg2024.png",
               "title": "-60% d'attri"
             }
-          ]
+          ],
+          "displaySize": "medium"
         },
         {
           "id": "text_mvfkz6ln_9txvvu",
@@ -672,7 +695,8 @@
               "alt": "guild_battlegrounds_sector_buildings_advanced_field_outpost_copper_gbg2024.png",
               "title": "Avant-poste de campagne avancée : -60% d'attri"
             }
-          ]
+          ],
+          "displaySize": "medium"
         },
         {
           "id": "text_mvfkz6z9_ni4rxu",
@@ -702,7 +726,8 @@
               "alt": "guild_battlegrounds_sector_buildings_barracks_reinforced_gbg2024.png",
               "title": "-60% d'attri"
             }
-          ]
+          ],
+          "displaySize": "medium"
         },
         {
           "id": "text_mvfleog9_z0kd2p",
@@ -750,7 +775,8 @@
               "alt": "guild_battlegrounds_sector_buildings_guild_fieldcamp_small_gbg2024.png",
               "title": "-26% d'attri"
             }
-          ]
+          ],
+          "displaySize": "medium"
         },
         {
           "id": "text_mvfm3zcm_ggglu5",
@@ -774,7 +800,8 @@
               "alt": "guild_battlegrounds_sector_buildings_decoys.png",
               "title": "Leurres"
             }
-          ]
+          ],
+          "displaySize": "medium"
         }
       ]
     }
@@ -831,5 +858,5 @@
       "data": "data:image/webp;base64,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"
     }
   ],
-  "updatedAt": "2026-10-19T20:17:34.279Z"
+  "updatedAt": "2026-10-19T20:46:14.073Z"
 }
