@@ -1342,6 +1342,12 @@ h2 { margin: 10px 0 16px; }
     font-weight: 700;
 }
 
+.tutorial-add-blocks.bottom {
+    margin: 20px 0 4px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255,255,255,.09);
+}
+
 .tutorial-admin-block {
     position: relative;
     padding: 13px;
@@ -3407,6 +3413,11 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
                     </div>
                     <input type="file" accept="image/*" multiple data-image-input-for="${menu.id}" hidden>
                     ${blocks}
+                    <div class="tutorial-add-blocks bottom" aria-label="Ajouter une partie en bas du tutoriel">
+                        <button type="button" data-action="add-text" data-menu-id="${menu.id}">Texte</button>
+                        <button type="button" data-action="add-image" data-menu-id="${menu.id}">Image</button>
+                        <button type="button" data-action="add-video" data-menu-id="${menu.id}">Vidéo</button>
+                    </div>
                 </div>
             </section>`;
         }).join("");
