@@ -2457,7 +2457,7 @@ h2 { margin: 10px 0 16px; }
     margin: 34px auto 0;
     min-height: 42px;
     display: flex;
-    justify-content: flex-start;
+    justify-content: flex-end;
     align-items: flex-end;
 }
 .home-settings-button {
@@ -2487,7 +2487,7 @@ h2 { margin: 10px 0 16px; }
 }
 .home-settings-popover {
     position: absolute;
-    left: 0;
+    right: 0;
     bottom: 42px;
     min-width: 205px;
     padding: 8px;
