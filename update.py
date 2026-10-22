@@ -53,6 +53,7 @@ SITE_BASE = "https://legodingo13.github.io/site-internet-legodingo13/"
 PAGEVIEWS_SITE = "legodingo13.github.io"
 # Clé historique conservée volontairement pour ne pas remettre les compteurs à zéro après le renommage du dépôt.
 PAGEVIEWS_BASE_PATH = "/serveur-discord-legodingo13"
+PAGEVIEWS_INSTALL_PATH = PAGEVIEWS_BASE_PATH + "/__shortcut_installations__"
 
 # Nous ajouterons la vraie balise Google Search Console plus tard.
 GOOGLE_META = """<!-- Google Search Console -->"""
@@ -2445,6 +2446,189 @@ h2 { margin: 10px 0 16px; }
     }
 }
 
+
+/* =========================================================
+   STATISTIQUES ADMINISTRATEUR — ACCUEIL
+   ========================================================= */
+.home-settings-wrap {
+    position: relative;
+    width: 100%;
+    max-width: 900px;
+    margin: 34px auto 0;
+    min-height: 42px;
+    display: flex;
+    justify-content: flex-start;
+    align-items: flex-end;
+}
+.home-settings-button {
+    width: 36px;
+    height: 36px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    padding: 6px;
+    opacity: .88;
+    display: grid;
+    place-items: center;
+    transition: opacity .15s ease, transform .15s ease;
+}
+.home-settings-button:hover {
+    opacity: 1;
+    transform: scale(1.06);
+    border: 0;
+    background: transparent;
+}
+.home-settings-button img {
+    display: block;
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    pointer-events: none;
+}
+.home-settings-popover {
+    position: absolute;
+    left: 0;
+    bottom: 42px;
+    min-width: 205px;
+    padding: 8px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,.12);
+    background: rgba(24,26,33,.98);
+    box-shadow: 0 15px 35px rgba(0,0,0,.45);
+    z-index: 30;
+}
+.home-settings-popover[hidden] { display: none; }
+.home-settings-popover button {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 9px;
+    border: 0;
+    background: rgba(255,255,255,.06);
+    color: white;
+    font-weight: 700;
+}
+.home-settings-popover button:hover { background: rgba(255,255,255,.11); }
+
+.home-stats-modal {
+    width: min(100%, 820px);
+}
+.home-stats-dashboard {
+    display: grid;
+    gap: 16px;
+}
+.home-stats-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    padding-right: 44px;
+}
+.home-stats-head h3 {
+    margin: 0;
+}
+.home-stats-admin-pill {
+    flex: 0 0 auto;
+    padding: 6px 9px;
+    border-radius: 999px;
+    border: 1px solid rgba(143,224,166,.25);
+    background: rgba(143,224,166,.08);
+    color: #8fe0a6;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.home-install-metric {
+    padding: 20px;
+    border-radius: 15px;
+    border: 1px solid rgba(255,212,147,.18);
+    background: rgba(255,212,147,.055);
+}
+.home-install-metric-label {
+    display: block;
+    color: #b6bdc8;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 7px;
+}
+.home-install-metric-value {
+    display: block;
+    color: #ffd493;
+    font-size: clamp(38px, 6vw, 54px);
+    line-height: 1;
+    font-weight: 900;
+}
+.home-install-metric-detail {
+    display: block;
+    margin-top: 8px;
+    color: #929aa7;
+    font-size: 12px;
+    line-height: 1.45;
+}
+.home-stats-section-title {
+    margin: 2px 0 0;
+    color: #f3f4f7;
+    font-size: 17px;
+}
+.home-page-stats-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+}
+.home-page-stat {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 13px;
+    border-radius: 11px;
+    border: 1px solid rgba(255,255,255,.09);
+    background: rgba(255,255,255,.04);
+}
+.home-page-stat-name {
+    min-width: 0;
+    color: #dfe3e9;
+    font-size: 13px;
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.home-page-stat-value {
+    flex: 0 0 auto;
+    color: #fff;
+    font-size: 18px;
+    font-weight: 900;
+}
+.home-page-stats-total {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 13px;
+    border-radius: 11px;
+    border: 1px solid rgba(255,212,147,.18);
+    background: rgba(255,212,147,.045);
+}
+.home-page-stats-total span { color: #c8ced7; font-size: 13px; font-weight: 700; }
+.home-page-stats-total strong { color: #ffd493; font-size: 20px; }
+.home-stats-note {
+    margin: 0;
+    color: #9da5b0;
+    font-size: 12px;
+    line-height: 1.55;
+}
+.home-stats-error {
+    margin: 0;
+    min-height: 18px;
+    color: #ff9e9e;
+    font-size: 13px;
+}
+@media (max-width: 650px) {
+    .home-stats-head { flex-direction: column; padding-right: 42px; }
+    .home-page-stats-list { grid-template-columns: 1fr; }
+}
+
 """
 
 SCRIPT = r"""
@@ -2748,10 +2932,33 @@ bindFoeArrowStates(document);
         }
     });
 
+    async function trackShortcutInstallation() {
+        const strip = document.getElementById("installShortcutStrip");
+        if (!strip) return;
+
+        const site = strip.dataset.installViewSite;
+        const path = strip.dataset.installViewPath;
+        if (!site || !path) return;
+
+        const base = "https://page-views-api.ratneshc.com/api/v1";
+        const query = `site=${encodeURIComponent(site)}&path=${encodeURIComponent(path)}`;
+
+        try {
+            await fetch(`${base}/track?${query}`, {
+                method: "GET",
+                cache: "no-store",
+                keepalive: true
+            });
+        } catch (error) {
+            console.warn("Compteur d'installations indisponible :", error);
+        }
+    }
+
     window.addEventListener("appinstalled", function () {
         deferredInstallPrompt = null;
         window.__legodingoInstallPrompt = null;
         if (installButton) installButton.textContent = "Installé";
+        trackShortcutInstallation();
         openInfo("Legodingo13 a bien été installé. Tu peux maintenant l'ouvrir directement depuis ton bureau ou ton écran d'accueil.");
     });
 
@@ -5002,6 +5209,344 @@ with open("_site/sw.js", "w", encoding="utf-8") as f:
 
 
 # ACCUEIL
+home_admin_markup = r"""
+<div class="home-settings-wrap">
+    <button
+        id="homeSettingsButton"
+        class="home-settings-button"
+        type="button"
+        data-foe-arrow
+        data-normal="foe_settings_normal.png"
+        data-hover="foe_settings_hover.png"
+        data-down="foe_settings_press.png"
+        aria-label="Paramètres de la page d'accueil"
+        title="Paramètres"
+    ><img src="foe_settings_normal.png" alt=""></button>
+
+    <div id="homeSettingsPopover" class="home-settings-popover" hidden>
+        <button id="homeOpenStatsButton" type="button">Voir les statistiques du site</button>
+    </div>
+</div>
+
+<div id="homePasswordModal" class="tutorial-modal-overlay" hidden>
+    <div class="tutorial-modal" role="dialog" aria-modal="true" aria-labelledby="homePasswordTitle">
+        <button
+            type="button"
+            class="tutorial-modal-close foe-modal-close"
+            data-close-home-password
+            data-foe-arrow
+            data-normal="foe_close_normal.png"
+            data-hover="foe_close_hover.png"
+            data-down="foe_close_press.png"
+            aria-label="Fermer"
+            title="Fermer"
+        ><img src="foe_close_normal.png" alt=""></button>
+        <h3 id="homePasswordTitle">Statistiques du site</h3>
+        <label for="homePasswordInput">Mot de passe :</label>
+        <input id="homePasswordInput" type="password" autocomplete="current-password">
+        <div id="homePasswordError" class="tutorial-modal-error"></div>
+        <div class="tutorial-modal-actions">
+            <button type="button" data-close-home-password>Annuler</button>
+            <button id="homePasswordValidate" class="primary" type="button">Valider</button>
+        </div>
+    </div>
+</div>
+
+<div
+    id="homeStatsModal"
+    class="tutorial-modal-overlay"
+    data-view-site="__PAGEVIEWS_SITE__"
+    data-install-path="__INSTALL_PATH__"
+    data-home-path="__HOME_PATH__"
+    data-discord-path="__DISCORD_PATH__"
+    data-youtube-path="__YOUTUBE_PATH__"
+    data-profile-path="__PROFILE_PATH__"
+    data-tutorials-path="__TUTORIALS_PATH__"
+    hidden
+>
+    <div class="tutorial-modal home-stats-modal" role="dialog" aria-modal="true" aria-labelledby="homeStatsTitle">
+        <button
+            type="button"
+            class="tutorial-modal-close foe-modal-close"
+            data-close-home-stats
+            data-foe-arrow
+            data-normal="foe_close_normal.png"
+            data-hover="foe_close_hover.png"
+            data-down="foe_close_press.png"
+            aria-label="Fermer"
+            title="Fermer"
+        ><img src="foe_close_normal.png" alt=""></button>
+
+        <div class="home-stats-dashboard">
+            <div class="home-stats-head">
+                <h3 id="homeStatsTitle">Statistiques du site</h3>
+                <span class="home-stats-admin-pill">Données administrateur</span>
+            </div>
+
+            <div class="home-install-metric">
+                <span class="home-install-metric-label">Installations du raccourci détectées</span>
+                <strong class="home-install-metric-value" id="homeInstallCount">—</strong>
+                <span class="home-install-metric-detail">Installations confirmées par les navigateurs compatibles depuis l'activation de ce compteur.</span>
+            </div>
+
+            <h4 class="home-stats-section-title">Visites de chaque page</h4>
+            <div class="home-page-stats-list">
+                <div class="home-page-stat"><span class="home-page-stat-name">Accueil</span><strong class="home-page-stat-value" data-home-page-stat="home">—</strong></div>
+                <div class="home-page-stat"><span class="home-page-stat-name">Discord</span><strong class="home-page-stat-value" data-home-page-stat="discord">—</strong></div>
+                <div class="home-page-stat"><span class="home-page-stat-name">YouTube</span><strong class="home-page-stat-value" data-home-page-stat="youtube">—</strong></div>
+                <div class="home-page-stat"><span class="home-page-stat-name">Profil Legodingo13</span><strong class="home-page-stat-value" data-home-page-stat="profile">—</strong></div>
+                <div class="home-page-stat"><span class="home-page-stat-name">Tutoriels de jeu</span><strong class="home-page-stat-value" data-home-page-stat="tutorials">—</strong></div>
+            </div>
+            <div class="home-page-stats-total"><span>Total des visites des 5 pages principales</span><strong id="homePageViewsTotal">—</strong></div>
+
+            <p class="home-stats-note">⚠ Sur iPhone et iPad, l'ajout manuel à l'écran d'accueil n'est pas confirmé de façon fiable par Safari. Le nombre réel d'installations peut donc être supérieur au nombre détecté.</p>
+            <p class="home-stats-error" id="homeStatsError"></p>
+        </div>
+    </div>
+</div>
+
+<script src="admin-config.js"></script>
+<script>
+(function () {
+    const settingsButton = document.getElementById("homeSettingsButton");
+    const settingsPopover = document.getElementById("homeSettingsPopover");
+    const openStatsButton = document.getElementById("homeOpenStatsButton");
+
+    const passwordModal = document.getElementById("homePasswordModal");
+    const passwordInput = document.getElementById("homePasswordInput");
+    const passwordError = document.getElementById("homePasswordError");
+    const passwordValidate = document.getElementById("homePasswordValidate");
+
+    const statsModal = document.getElementById("homeStatsModal");
+    const installCount = document.getElementById("homeInstallCount");
+    const totalCount = document.getElementById("homePageViewsTotal");
+    const statsError = document.getElementById("homeStatsError");
+
+    if (!settingsButton || !settingsPopover || !passwordModal || !statsModal) return;
+
+    // .card utilise backdrop-filter. Comme pour les fenêtres Tutoriels/YouTube,
+    // on place les deux modales directement sous <body> : leur position:fixed
+    // reste ainsi calculée par rapport au viewport et elles sont toujours centrées.
+    [passwordModal, statsModal].forEach(function (modal) {
+        if (modal && modal.parentElement !== document.body) {
+            document.body.appendChild(modal);
+        }
+    });
+
+    function lockPageScroll() {
+        document.documentElement.style.overflow = "hidden";
+    }
+
+    function unlockPageScrollIfNoHomeModal() {
+        const passwordOpen = passwordModal && !passwordModal.hidden;
+        const statsOpen = statsModal && !statsModal.hidden;
+        if (!passwordOpen && !statsOpen) {
+            document.documentElement.style.overflow = "";
+        }
+    }
+
+    function openPasswordModal() {
+        settingsPopover.hidden = true;
+        passwordError.textContent = "";
+        passwordInput.value = "";
+        passwordModal.hidden = false;
+        lockPageScroll();
+        setTimeout(() => passwordInput.focus(), 20);
+    }
+
+    function closePasswordModal() {
+        passwordModal.hidden = true;
+        passwordInput.value = "";
+        passwordError.textContent = "";
+        unlockPageScrollIfNoHomeModal();
+    }
+
+    function closeStatsModal() {
+        statsModal.hidden = true;
+        statsError.textContent = "";
+        unlockPageScrollIfNoHomeModal();
+    }
+
+    function base64ToBytes(value) {
+        const binary = atob(value);
+        return Uint8Array.from(binary, char => char.charCodeAt(0));
+    }
+
+    async function decryptAdminToken(password) {
+        const config = window.LEGODINGO13_ADMIN_CONFIG;
+        if (!config || !config.ciphertext || !config.salt || !config.iv) {
+            throw new Error("CONFIG_ABSENTE");
+        }
+
+        const encoder = new TextEncoder();
+        const material = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, ["deriveKey"]);
+        const key = await crypto.subtle.deriveKey(
+            {
+                name: "PBKDF2",
+                salt: base64ToBytes(config.salt),
+                iterations: Number(config.iterations || 310000),
+                hash: "SHA-256"
+            },
+            material,
+            { name: "AES-GCM", length: 256 },
+            false,
+            ["decrypt"]
+        );
+
+        const clear = await crypto.subtle.decrypt(
+            { name: "AES-GCM", iv: base64ToBytes(config.iv) },
+            key,
+            base64ToBytes(config.ciphertext)
+        );
+        return new TextDecoder().decode(clear).trim();
+    }
+
+    function formatStat(value) {
+        const number = Number(value);
+        return Number.isFinite(number) ? new Intl.NumberFormat("fr-FR").format(number) : "—";
+    }
+
+    async function readCounter(path) {
+        const site = statsModal.dataset.viewSite;
+        if (!site || !path) throw new Error("Compteur non configuré");
+        const base = "https://page-views-api.ratneshc.com/api/v1";
+        const query = `site=${encodeURIComponent(site)}&path=${encodeURIComponent(path)}`;
+        const response = await fetch(`${base}/views?${query}`, { method: "GET", cache: "no-store" });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        const views = Number(data.views);
+        if (!Number.isFinite(views)) throw new Error("Valeur de compteur invalide");
+        return views;
+    }
+
+    async function loadStats() {
+        statsError.textContent = "";
+        installCount.textContent = "…";
+        totalCount.textContent = "…";
+        document.querySelectorAll("[data-home-page-stat]").forEach(node => node.textContent = "…");
+
+        const pages = [
+            ["home", statsModal.dataset.homePath],
+            ["discord", statsModal.dataset.discordPath],
+            ["youtube", statsModal.dataset.youtubePath],
+            ["profile", statsModal.dataset.profilePath],
+            ["tutorials", statsModal.dataset.tutorialsPath]
+        ];
+
+        const results = await Promise.allSettled([
+            readCounter(statsModal.dataset.installPath),
+            ...pages.map(([, path]) => readCounter(path))
+        ]);
+
+        if (results[0].status === "fulfilled") {
+            installCount.textContent = formatStat(results[0].value);
+        } else {
+            installCount.textContent = "—";
+        }
+
+        let total = 0;
+        let successfulPages = 0;
+        pages.forEach(([key], index) => {
+            const result = results[index + 1];
+            const node = document.querySelector(`[data-home-page-stat="${key}"]`);
+            if (!node) return;
+            if (result.status === "fulfilled") {
+                node.textContent = formatStat(result.value);
+                total += result.value;
+                successfulPages += 1;
+            } else {
+                node.textContent = "—";
+            }
+        });
+        totalCount.textContent = successfulPages ? formatStat(total) : "—";
+
+        const failed = results.filter(result => result.status === "rejected").length;
+        if (failed) {
+            statsError.textContent = "Une ou plusieurs statistiques sont temporairement indisponibles.";
+        }
+    }
+
+    async function validatePassword() {
+        const password = passwordInput.value;
+        passwordError.textContent = "";
+        if (!password) {
+            passwordError.textContent = "Entre le mot de passe.";
+            return;
+        }
+
+        passwordValidate.disabled = true;
+        passwordValidate.textContent = "Vérification…";
+        try {
+            const token = await decryptAdminToken(password);
+            if (!(token.startsWith("github_pat_") || token.startsWith("ghp_"))) {
+                throw new Error("TOKEN_INVALIDE");
+            }
+
+            passwordModal.hidden = true;
+            passwordInput.value = "";
+            passwordError.textContent = "";
+            statsModal.hidden = false;
+            lockPageScroll();
+            loadStats();
+        } catch (error) {
+            if (String(error.message) === "CONFIG_ABSENTE") {
+                passwordError.textContent = "La configuration administrateur n'est pas encore installée sur le site.";
+            } else {
+                passwordError.textContent = "Mot de passe incorrect.";
+            }
+        } finally {
+            passwordValidate.disabled = false;
+            passwordValidate.textContent = "Valider";
+        }
+    }
+
+    settingsButton.addEventListener("click", function () {
+        settingsPopover.hidden = !settingsPopover.hidden;
+    });
+    openStatsButton.addEventListener("click", openPasswordModal);
+    passwordValidate.addEventListener("click", validatePassword);
+    passwordInput.addEventListener("keydown", function (event) {
+        if (event.key === "Enter") validatePassword();
+    });
+
+    document.querySelectorAll("[data-close-home-password]").forEach(button => {
+        button.addEventListener("click", closePasswordModal);
+    });
+    document.querySelectorAll("[data-close-home-stats]").forEach(button => {
+        button.addEventListener("click", closeStatsModal);
+    });
+
+    passwordModal.addEventListener("click", event => {
+        if (event.target === passwordModal) closePasswordModal();
+    });
+    statsModal.addEventListener("click", event => {
+        if (event.target === statsModal) closeStatsModal();
+    });
+
+    document.addEventListener("click", event => {
+        if (!settingsPopover.hidden && !settingsPopover.contains(event.target) && event.target !== settingsButton) {
+            settingsPopover.hidden = true;
+        }
+    });
+
+    document.addEventListener("keydown", event => {
+        if (event.key !== "Escape") return;
+        if (!statsModal.hidden) closeStatsModal();
+        else if (!passwordModal.hidden) closePasswordModal();
+    });
+})();
+</script>
+"""
+home_admin_markup = (home_admin_markup
+    .replace("__PAGEVIEWS_SITE__", PAGEVIEWS_SITE)
+    .replace("__INSTALL_PATH__", PAGEVIEWS_INSTALL_PATH)
+    .replace("__HOME_PATH__", PAGEVIEWS_BASE_PATH + "/")
+    .replace("__DISCORD_PATH__", PAGEVIEWS_BASE_PATH + "/discord.html")
+    .replace("__YOUTUBE_PATH__", PAGEVIEWS_BASE_PATH + "/youtube.html")
+    .replace("__PROFILE_PATH__", PAGEVIEWS_BASE_PATH + "/profil.html")
+    .replace("__TUTORIALS_PATH__", PAGEVIEWS_BASE_PATH + "/tutoriels.html")
+)
+
 home_body = f"""
 <h1>Legodingo13</h1>
 <p class="lead">
@@ -5009,7 +5554,7 @@ Bienvenue sur le site de la communauté Legodingo13 autour de Forge of Empires.
 Retrouve ici mes liens officiels, puis une sélection de sites, extensions et chaînes YouTube tierces utiles à la communauté Forge of Empires.
 </p>
 
-<div class="install-shortcut-strip" id="installShortcutStrip">
+<div class="install-shortcut-strip" id="installShortcutStrip" data-install-view-site="{PAGEVIEWS_SITE}" data-install-view-path="{PAGEVIEWS_INSTALL_PATH}">
     <img src="legodingo13_shortcut_512.png" class="shortcut-icon" alt="Icône d'accès direct Legodingo13">
     <div class="install-shortcut-copy">
         <span class="install-shortcut-title">Garde la communauté FOE à portée de clic</span>
@@ -5192,6 +5737,7 @@ Retrouve ici mes liens officiels, puis une sélection de sites, extensions et ch
     </a>
 </div>
 </section>
+{home_admin_markup}
 """
 shell(
     "index.html",
