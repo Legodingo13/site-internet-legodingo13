@@ -6525,7 +6525,7 @@ EG_MINIGAME_SCRIPT = r"""
             kind: "gray",
             top: "Information de joueur obtenue !",
             middle: "Legodingo13",
-            message: "Sur T, j'ai le Top 1 mondial en âge colonial depuis le 18/10/2025 !"
+            message: "Sur T j'ai eu le Top 1 mondial en âge colonial du 18/10/2025 au 06/11/2026. La maj GM ne m'a pas loupé mdr."
         },
         {
             kind: "gray",
