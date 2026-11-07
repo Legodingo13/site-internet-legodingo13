@@ -55,8 +55,32 @@ PAGEVIEWS_SITE = "legodingo13.github.io"
 PAGEVIEWS_BASE_PATH = "/serveur-discord-legodingo13"
 PAGEVIEWS_INSTALL_PATH = PAGEVIEWS_BASE_PATH + "/__shortcut_installations__"
 
-# Nous ajouterons la vraie balise Google Search Console plus tard.
-GOOGLE_META = """<!-- Google Search Console -->"""
+# Google Search Console :
+# - méthode recommandée avec ce site GitHub Pages : propriété « Préfixe d’URL » ;
+# - soit définir GOOGLE_SITE_VERIFICATION dans l’environnement ;
+# - soit créer un fichier google-site-verification.txt contenant uniquement le jeton ;
+# - soit déposer directement le fichier HTML googleXXXXXXXX.html fourni par Google à côté de update.py
+#   (il sera automatiquement copié dans _site plus bas).
+def read_google_site_verification():
+    value = str(os.environ.get("GOOGLE_SITE_VERIFICATION", "") or "").strip()
+    if value:
+        return value
+    path = "google-site-verification.txt"
+    if os.path.exists(path):
+        try:
+            with open(path, "r", encoding="utf-8") as file:
+                return file.read().strip()
+        except Exception:
+            pass
+    return ""
+
+
+GOOGLE_SITE_VERIFICATION = read_google_site_verification()
+GOOGLE_META = (
+    f'<meta name="google-site-verification" content="{html.escape(GOOGLE_SITE_VERIFICATION, quote=True)}">'
+    if GOOGLE_SITE_VERIFICATION
+    else "<!-- Google Search Console : vérification non encore configurée -->"
+)
 
 
 # =========================================================
@@ -4761,14 +4785,25 @@ def navigation(active):
     return "".join(parts)
 
 
-def shell(filename, active, title, description, body, robots="index, follow", og_image="logo.png", og_type="website"):
-    canonical = SITE_BASE + ("" if filename == "index.html" else filename)
+def shell(filename, active, title, description, body, robots="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1", og_image="logo.png", og_type="website", canonical_override=None, structured_data=None):
+    canonical = canonical_override or (SITE_BASE + ("" if filename == "index.html" else filename))
     og_image_url = og_image if str(og_image).startswith(("http://", "https://")) else SITE_BASE + str(og_image).lstrip("/")
     view_path = (
         PAGEVIEWS_BASE_PATH + "/"
         if filename == "index.html"
         else PAGEVIEWS_BASE_PATH + "/" + filename
     )
+    json_ld_markup = ""
+    if structured_data:
+        payloads = structured_data if isinstance(structured_data, list) else [structured_data]
+        json_ld_markup = "\n".join(
+            '<script type="application/ld+json">'
+            + json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+            + '</script>'
+            for payload in payloads
+            if isinstance(payload, dict)
+        )
+
     page = f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -4797,8 +4832,9 @@ window.addEventListener("appinstalled", function () {{
 </script>
 <title>{html.escape(title)}</title>
 <meta name="description" content="{html.escape(description, quote=True)}">
+<meta name="author" content="Legodingo13">
 <meta name="robots" content="{robots}">
-<link rel="canonical" href="{canonical}">
+<link rel="canonical" href="{html.escape(canonical, quote=True)}">
 <meta property="og:locale" content="fr_FR">
 <meta property="og:type" content="{html.escape(og_type, quote=True)}">
 <meta property="og:site_name" content="Legodingo13">
@@ -4812,6 +4848,7 @@ window.addEventListener("appinstalled", function () {{
 <meta name="twitter:description" content="{html.escape(description, quote=True)}">
 <meta name="twitter:image" content="{html.escape(og_image_url, quote=True)}">
 {GOOGLE_META}
+{json_ld_markup}
 <style>{CSS}</style>
 </head>
 <body>
@@ -4865,6 +4902,29 @@ window.addEventListener("appinstalled", function () {{
 
     with open(os.path.join("_site", filename), "w", encoding="utf-8") as f:
         f.write(page)
+
+
+def write_permanent_html_redirect(filename, target_url, title="Redirection - Legodingo13"):
+    """Redirection instantanée adaptée à GitHub Pages (pas de contrôle des en-têtes HTTP)."""
+    safe_target = html.escape(target_url, quote=True)
+    js_target = json.dumps(target_url, ensure_ascii=False)
+    page = f'''<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{html.escape(title)}</title>
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="{safe_target}">
+<meta http-equiv="refresh" content="0; url={safe_target}">
+<script>window.location.replace({js_target});</script>
+</head>
+<body>
+<p>Cette page a été déplacée. <a href="{safe_target}">Continuer vers la nouvelle adresse</a>.</p>
+</body>
+</html>'''
+    with open(os.path.join("_site", filename), "w", encoding="utf-8") as file:
+        file.write(page)
 
 
 def tutorial_share_slug(menu):
@@ -5022,20 +5082,155 @@ def tutorial_share_version(menu):
     return cleaned or "1"
 
 
+
+def tutorial_video_id_from_url(value):
+    value = str(value or "").strip()
+    patterns = [
+        r"youtu\.be/([A-Za-z0-9_-]{6,})",
+        r"youtube\.com/watch\?[^#]*v=([A-Za-z0-9_-]{6,})",
+        r"youtube\.com/shorts/([A-Za-z0-9_-]{6,})",
+        r"youtube\.com/embed/([A-Za-z0-9_-]{6,})",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, value, flags=re.IGNORECASE)
+        if match:
+            return match.group(1)
+    return None
+
+
+def clean_static_tutorial_html(value):
+    """Nettoyage défensif du HTML riche avant insertion dans les pages SEO statiques."""
+    text = str(value or "")
+    text = re.sub(r"<(script|style|iframe|object|embed)\b[^>]*>.*?</\1\s*>", "", text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r"\s+on[a-zA-Z]+\s*=\s*([\"']).*?\1", "", text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r"\s+on[a-zA-Z]+\s*=\s*[^\s>]+", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"javascript\s*:", "", text, flags=re.IGNORECASE)
+
+    def replace_link(match):
+        label = html.escape(match.group(1), quote=False)
+        href = html.escape(match.group(2), quote=True)
+        return f'<a href="{href}" target="_blank" rel="noopener noreferrer">{label}</a>'
+
+    text = re.sub(r"\(([^()<>\[\]\n]{1,200})\)\[(https?://[^\]\s<>]+)\]", replace_link, text)
+    return text
+
+
+def export_tutorial_content_image(data_url, slug, index):
+    match = re.match(r"^data:(image/[A-Za-z0-9.+-]+);base64,(.+)$", str(data_url or ""), flags=re.DOTALL)
+    if not match:
+        return None
+    extension = {
+        "image/webp": "webp",
+        "image/png": "png",
+        "image/jpeg": "jpg",
+        "image/jpg": "jpg",
+        "image/gif": "gif",
+    }.get(match.group(1).lower())
+    if not extension:
+        return None
+    try:
+        binary = base64.b64decode(match.group(2), validate=False)
+    except Exception:
+        return None
+    if not binary:
+        return None
+    safe_slug = re.sub(r"[^A-Za-z0-9._-]+", "-", slug).strip("-.") or "tutoriel"
+    directory = os.path.join("_site", "tutorial-media", safe_slug)
+    os.makedirs(directory, exist_ok=True)
+    filename = f"image-{int(index):03d}.{extension}"
+    with open(os.path.join(directory, filename), "wb") as file:
+        file.write(binary)
+    return f"../tutorial-media/{safe_slug}/{filename}"
+
+
+def render_static_tutorial_blocks(menu, slug):
+    """Rend le contenu d'un tutoriel en HTML visible et indexable par les moteurs de recherche."""
+    parts = []
+    media_index = 0
+    for block in (menu or {}).get("blocks", []) or []:
+        if not isinstance(block, dict):
+            continue
+        block_type = str(block.get("type", "") or "")
+        if block_type == "text":
+            rich = clean_static_tutorial_html(block.get("html", ""))
+            if rich.strip():
+                parts.append(f'<section class="guide-block guide-text">{rich}</section>')
+            continue
+        if block_type == "image":
+            images = block.get("images", []) if isinstance(block.get("images"), list) else []
+            if not images:
+                legacy = str(block.get("data", "") or "")
+                if legacy.startswith("data:image/"):
+                    images = [{"data": legacy, "alt": block.get("alt", "Image du tutoriel"), "title": block.get("title", "")}]
+            cells = []
+            for image in images:
+                if not isinstance(image, dict):
+                    continue
+                data = str(image.get("data", "") or "")
+                if not data.startswith("data:image/"):
+                    continue
+                media_index += 1
+                src = export_tutorial_content_image(data, slug, media_index)
+                if not src:
+                    continue
+                title = str(image.get("title", "") or "").strip()
+                alt = title or str(image.get("alt", "") or "Image du tutoriel")
+                cells.append(
+                    '<figure class="guide-figure">'
+                    f'<img src="{html.escape(src, quote=True)}" alt="{html.escape(alt, quote=True)}" loading="lazy" decoding="async">'
+                    + (f'<figcaption>{html.escape(title)}</figcaption>' if title else "")
+                    + '</figure>'
+                )
+            if cells:
+                size = str(block.get("displaySize", "large") or "large")
+                if size not in ("large", "medium", "small"):
+                    size = "large"
+                layout = "single" if len(cells) == 1 else "grid"
+                parts.append(f'<section class="guide-block guide-images guide-images-{layout} guide-size-{size}">' + "".join(cells) + '</section>')
+            continue
+        if block_type == "video":
+            url = str(block.get("url", "") or "").strip()
+            video_id = tutorial_video_id_from_url(url)
+            if video_id:
+                safe_id = quote(video_id, safe="")
+                menu_title = html.escape(str((menu or {}).get("title", "")), quote=True)
+                parts.append(
+                    '<section class="guide-block guide-video">'
+                    f'<iframe src="https://www.youtube-nocookie.com/embed/{safe_id}" title="Vidéo du tutoriel {menu_title}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>'
+                    '</section>'
+                )
+            continue
+    return "\n".join(parts) or '<p class="guide-empty">Le contenu de ce tutoriel est disponible sur la page principale des tutoriels.</p>'
+
+
+def normalize_lastmod(value, fallback):
+    raw = str(value or "").strip()
+    if not raw:
+        return fallback
+    try:
+        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        return parsed.date().isoformat()
+    except Exception:
+        match = re.match(r"^(\d{4}-\d{2}-\d{2})", raw)
+        return match.group(1) if match else fallback
+
+
 def generate_tutorial_share_pages():
-    """Crée une URL partageable /t/<slug>.html par tutoriel avec Open Graph."""
+    '''Crée une vraie page indexable /t/<slug>.html pour chaque tutoriel.
+
+    Ces pages servent à la fois d'aperçus Discord et de portes d'entrée SEO : elles
+    contiennent réellement le tutoriel, ont une canonical propre et sont ajoutées au sitemap.
+    '''
     data_path = "tutoriels-data.json"
     if not os.path.exists(data_path):
-        print("ATTENTION : tutoriels-data.json absent, aucune page de partage de tutoriel générée.")
+        print("ATTENTION : tutoriels-data.json absent, aucune page de tutoriel individuelle générée.")
         return []
-
     try:
         with open(data_path, "r", encoding="utf-8") as file:
             data = json.load(file)
     except Exception as error:
-        print("ATTENTION : impossible de lire tutoriels-data.json pour les aperçus de partage :", error)
+        print("ATTENTION : impossible de lire tutoriels-data.json pour les pages SEO :", error)
         return []
-
     menus = data.get("menus", []) if isinstance(data, dict) else []
     if not isinstance(menus, list):
         return []
@@ -5043,14 +5238,54 @@ def generate_tutorial_share_pages():
     os.makedirs(os.path.join("_site", "t"), exist_ok=True)
     generated = []
     used_paths = set()
+    build_date = datetime.now(timezone.utc).date().isoformat()
+
+    guide_css = r'''\
+:root { color-scheme: dark; }
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+body { margin:0; padding:34px 18px; font-family:Arial,Helvetica,sans-serif; color:#f4f5f7; background:linear-gradient(rgba(6,10,18,.52),rgba(6,10,18,.82)),url("../fond.png") center/cover no-repeat fixed; }
+a { color:#ffd493; }
+.guide-page { width:min(980px,100%); margin:0 auto; }
+.guide-card { overflow:hidden; border:1px solid rgba(255,210,130,.23); border-radius:26px; background:linear-gradient(145deg,rgba(17,21,31,.97),rgba(31,20,18,.95)); box-shadow:0 30px 90px rgba(0,0,0,.58); }
+.guide-head { padding:30px 34px 22px; text-align:center; border-bottom:1px solid rgba(255,255,255,.08); }
+.guide-logo { width:125px; max-width:45%; height:auto; }
+.guide-breadcrumbs { margin:18px 0 0; color:#aeb5bf; font-size:13px; }
+.guide-breadcrumbs a { color:#d7dbe1; text-decoration:none; }
+.guide-head h1 { margin:18px auto 10px; max-width:820px; font-size:clamp(30px,5vw,48px); line-height:1.08; }
+.guide-description { max-width:780px; margin:0 auto; color:#cbd0d8; line-height:1.65; }
+.guide-date { display:block; margin-top:12px; color:#8f98a7; font-size:12px; }
+.guide-content { padding:30px 38px 36px; }
+.guide-block + .guide-block { margin-top:22px; }
+.guide-text { color:#e7e9ed; font-size:16px; line-height:1.75; overflow-wrap:anywhere; }
+.guide-text p { margin:0 0 12px; }
+.guide-text img.tutorial-inline-emoji { width:1.25em; height:1.25em; object-fit:contain; vertical-align:-.23em; }
+.guide-images { display:grid; gap:14px; justify-content:center; align-items:start; }
+.guide-images-single { grid-template-columns:minmax(0,1fr); }
+.guide-images-grid { grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr)); }
+.guide-figure { margin:0; min-width:0; text-align:center; }
+.guide-figure img { display:block; width:auto; max-width:100%; height:auto; max-height:720px; margin:0 auto; border-radius:14px; box-shadow:0 14px 34px rgba(0,0,0,.32); }
+.guide-size-medium .guide-figure img { max-width:min(760px,100%); }
+.guide-size-small .guide-figure img { max-width:min(520px,100%); }
+.guide-images-grid.guide-size-medium { grid-template-columns:repeat(auto-fit,minmax(min(210px,100%),320px)); }
+.guide-images-grid.guide-size-small { grid-template-columns:repeat(auto-fit,minmax(min(160px,100%),240px)); }
+.guide-figure figcaption { margin-top:8px; color:#cfd4dc; font-size:14px; }
+.guide-video { position:relative; width:100%; aspect-ratio:16/9; overflow:hidden; border-radius:15px; background:#000; }
+.guide-video iframe { position:absolute; inset:0; width:100%; height:100%; border:0; }
+.guide-actions { display:flex; flex-wrap:wrap; justify-content:center; gap:10px; padding:0 38px 34px; }
+.guide-button { display:inline-block; padding:12px 17px; border-radius:11px; text-decoration:none; color:#1d160f; background:linear-gradient(135deg,#ffd493,#e8a34b); font-weight:800; }
+.guide-button.secondary { color:#eceff5; background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.12); }
+.guide-footer { padding:20px 30px 26px; border-top:1px solid rgba(255,255,255,.08); color:#9ba3ae; text-align:center; font-size:12px; }
+@media (max-width:700px) { body{padding:16px 9px;background-attachment:scroll}.guide-card{border-radius:19px}.guide-head{padding:24px 18px 18px}.guide-content{padding:23px 18px 28px}.guide-actions{padding:0 18px 28px}.guide-images-grid{grid-template-columns:1fr}.guide-size-medium .guide-figure img,.guide-size-small .guide-figure img{max-width:100%} }
+'''
 
     for menu in menus:
         if not isinstance(menu, dict):
             continue
-        title = str(menu.get("shareTitle", "") or "").strip() or str(menu.get("title", "") or "").strip()
+        visible_title = str(menu.get("title", "") or "").strip()
+        title = str(menu.get("shareTitle", "") or "").strip() or visible_title
         if not title:
             continue
-
         slug = tutorial_share_slug(menu)
         filename_slug = slug
         suffix_index = 2
@@ -5060,69 +5295,102 @@ def generate_tutorial_share_pages():
         used_paths.add(filename_slug)
 
         description = automatic_tutorial_description(menu)
+        meta_description = trim_share_description(description, 160)
+        version = tutorial_share_version(menu)
+        canonical_url = SITE_BASE + "t/" + quote(filename_slug, safe="-._~") + ".html"
+        share_url = canonical_url + "?v=" + quote(version, safe="-._~")
         target_anchor = quote(slug, safe="-._~")
         target_url = SITE_BASE + "tutoriels.html#" + target_anchor
-        share_url = (
-            SITE_BASE + "t/" + quote(filename_slug, safe="-._~") + ".html"
-            + "?v=" + quote(tutorial_share_version(menu), safe="-._~")
-        )
+        lastmod = normalize_lastmod(menu.get("updatedAt", ""), build_date)
 
         image_data = automatic_tutorial_image_data(menu)
         image_relative = export_data_image(image_data, filename_slug) if image_data else None
-        image_url = SITE_BASE + image_relative if image_relative else SITE_BASE + "logo.png"
+        image_url = (SITE_BASE + image_relative + "?v=" + quote(version, safe="-._~")) if image_relative else SITE_BASE + "logo.png"
+        content_html = render_static_tutorial_blocks(menu, filename_slug)
 
+        page_title = f"{title} – Guide Forge of Empires | Legodingo13"
         escaped_title = html.escape(title, quote=True)
-        escaped_description = html.escape(description, quote=True)
+        escaped_page_title = html.escape(page_title)
+        escaped_description = html.escape(meta_description, quote=True)
+        escaped_og_description = html.escape(description, quote=True)
         escaped_target = html.escape(target_url, quote=True)
-        escaped_share = html.escape(share_url, quote=True)
+        escaped_canonical = html.escape(canonical_url, quote=True)
         escaped_image = html.escape(image_url, quote=True)
-        redirect_js = json.dumps(target_url, ensure_ascii=False)
+        escaped_lastmod = html.escape(lastmod, quote=True)
+
+        article_schema = {
+            "@context": "https://schema.org", "@type": "Article", "headline": title,
+            "description": meta_description, "mainEntityOfPage": canonical_url, "url": canonical_url,
+            "dateModified": lastmod, "inLanguage": "fr-FR",
+            "author": {"@type": "Person", "name": "Legodingo13", "url": SITE_BASE + "profil.html"},
+            "isPartOf": {"@type": "WebSite", "name": "Legodingo13", "url": SITE_BASE},
+            "image": image_url.split("?", 1)[0],
+        }
+        breadcrumb_schema = {
+            "@context": "https://schema.org", "@type": "BreadcrumbList",
+            "itemListElement": [
+                {"@type": "ListItem", "position": 1, "name": "Accueil", "item": SITE_BASE},
+                {"@type": "ListItem", "position": 2, "name": "Tutoriels de jeu", "item": SITE_BASE + "tutoriels.html"},
+                {"@type": "ListItem", "position": 3, "name": title, "item": canonical_url},
+            ],
+        }
+        json_ld = json.dumps([article_schema, breadcrumb_schema], ensure_ascii=False, separators=(",", ":"))
 
         share_page = f'''<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{escaped_title} - Legodingo13</title>
+<title>{escaped_page_title}</title>
 <meta name="description" content="{escaped_description}">
-<meta name="robots" content="noindex, follow">
-<link rel="canonical" href="{escaped_target}">
+<meta name="author" content="Legodingo13">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+<link rel="canonical" href="{escaped_canonical}">
 <meta property="og:locale" content="fr_FR">
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="Legodingo13">
 <meta property="og:title" content="{escaped_title}">
-<meta property="og:description" content="{escaped_description}">
-<meta property="og:url" content="{escaped_share}">
+<meta property="og:description" content="{escaped_og_description}">
+<meta property="og:url" content="{escaped_canonical}">
 <meta property="og:image" content="{escaped_image}">
 <meta property="og:image:alt" content="{escaped_title}">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="{escaped_title}">
-<meta name="twitter:description" content="{escaped_description}">
+<meta name="twitter:description" content="{escaped_og_description}">
 <meta name="twitter:image" content="{escaped_image}">
-<meta http-equiv="refresh" content="0; url={escaped_target}">
+{GOOGLE_META}
+<script type="application/ld+json">{json_ld}</script>
 <link rel="icon" type="image/x-icon" href="../favicon.ico?v=4">
-<style>
-body{{margin:0;padding:40px 20px;background:#111722;color:#fff;font-family:Arial,Helvetica,sans-serif;text-align:center}}
-main{{max-width:720px;margin:60px auto;padding:28px;border:1px solid rgba(255,210,130,.25);border-radius:20px;background:#1a1d27}}
-a{{color:#ffd493}}
-</style>
+<link rel="apple-touch-icon" sizes="180x180" href="../legodingo13_shortcut_180.png?v=2">
+<style>{guide_css}</style>
 </head>
 <body>
-<main>
+<main class="guide-page">
+<article class="guide-card">
+<header class="guide-head">
+<a href="../index.html" aria-label="Accueil Legodingo13"><img class="guide-logo" src="../logo.png" alt="Legodingo13"></a>
+<div class="guide-breadcrumbs"><a href="../index.html">Accueil</a> › <a href="../tutoriels.html">Tutoriels de jeu</a> › {escaped_title}</div>
 <h1>{escaped_title}</h1>
-<p>{escaped_description}</p>
-<p>Ouverture du tutoriel…</p>
-<p><a href="{escaped_target}">Ouvrir le tutoriel</a></p>
+<p class="guide-description">{escaped_og_description}</p>
+<time class="guide-date" datetime="{escaped_lastmod}">Dernière mise à jour : {escaped_lastmod}</time>
+</header>
+<div class="guide-content">
+{content_html}
+</div>
+<div class="guide-actions">
+<a class="guide-button" href="{escaped_target}">Voir ce tutoriel sur la page principale</a>
+<a class="guide-button secondary" href="../tutoriels.html">Tous les tutoriels</a>
+</div>
+<footer class="guide-footer">Guide Forge of Empires publié par Legodingo13.</footer>
+</article>
 </main>
-<script>window.location.replace({redirect_js});</script>
 </body>
 </html>'''
-
         with open(os.path.join("_site", "t", filename_slug + ".html"), "w", encoding="utf-8") as file:
             file.write(share_page)
-        generated.append(filename_slug)
-
+        generated.append({"slug": filename_slug, "url": canonical_url, "share_url": share_url, "lastmod": lastmod})
     return generated
+
 
 
 if os.path.exists("_site"):
@@ -5742,9 +6010,23 @@ Retrouve ici mes liens officiels, puis une sélection de sites, extensions et ch
 shell(
     "index.html",
     "accueil",
-    "Legodingo13 - Communauté Forge of Empires",
-    f"Découvrez les tutoriels et guides Forge of Empires de Legodingo13, son serveur Discord de {member_count} membres et sa chaîne YouTube.",
+    "Legodingo13 – Guides Forge of Empires, Discord et YouTube",
+    f"Guides et tutoriels Forge of Empires par Legodingo13, serveur Discord de {member_count} membres, chaîne YouTube et ressources utiles pour les joueurs FOE.",
     home_body,
+    structured_data={
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Legodingo13",
+        "alternateName": ["Legodingo13 Forge of Empires", "Legodingo13 FOE"],
+        "url": SITE_BASE,
+        "inLanguage": "fr-FR",
+        "publisher": {
+            "@type": "Person",
+            "name": "Legodingo13",
+            "url": SITE_BASE + "profil.html",
+            "sameAs": [YOUTUBE_URL, GUNS_URL]
+        }
+    },
 )
 
 
@@ -5774,8 +6056,8 @@ de la communauté francophone de Forge of Empires !
 shell(
     "discord.html",
     "discord",
-    f"Serveur Discord Legodingo13 - {member_count} membres",
-    f"Le serveur Discord de Legodingo13 compte actuellement environ {member_count} membres, dont {online_count} membres en ligne.",
+    f"Serveur Discord Forge of Empires FR – Legodingo13 ({member_count} membres)",
+    f"Rejoignez le serveur Discord francophone Forge of Empires de Legodingo13 : environ {member_count} membres, dont {online_count} actuellement en ligne.",
     discord_body,
     og_image="discord_presentation_1.png",
 )
@@ -6319,8 +6601,8 @@ youtube_body = f"""
 shell(
     "youtube.html",
     "youtube",
-    f"YouTube Legodingo13 - {youtube_display}",
-    f"Chaîne YouTube officielle Legodingo13 avec {youtube_display}.",
+    f"YouTube Legodingo13 – Forge of Empires ({youtube_display})",
+    f"Chaîne YouTube de Legodingo13 consacrée à Forge of Empires : vidéos, guides et contenus FOE. {youtube_display}.",
     youtube_body,
 )
 
@@ -6449,8 +6731,8 @@ Retrouve ici les tutoriels et guides de jeu publiés par Legodingo13.
 shell(
     "tutoriels.html",
     "tutoriels",
-    "Tutoriels de jeu - Legodingo13",
-    "Tutoriels et guides de jeu publiés par Legodingo13.",
+    "Tutoriels Forge of Empires – Guides FOE | Legodingo13",
+    "Tutoriels et guides Forge of Empires publiés par Legodingo13 : stratégies, mécaniques de jeu, CBG et conseils FOE.",
     tutoriels_body,
     og_image="tutoriels_logo.png",
 )
@@ -6974,22 +7256,33 @@ d'ouvrir l'application pour publier les dernières modifications.
 shell(
     "profil.html",
     "profil",
-    "Profil Legodingo13 - Tableau Excel des mondes FOE",
-    "Profil Legodingo13 : dernière version du tableau Excel des mondes Forge of Empires.",
+    "Profil Legodingo13 – Forge of Empires et tableau des mondes FOE",
+    "Profil Forge of Empires de Legodingo13, tableau des mondes FOE et mini-jeu de chasse aux reliques.",
     profil_body,
     og_image="profil_tableau.png",
+    structured_data={
+        "@context": "https://schema.org",
+        "@type": "ProfilePage",
+        "url": SITE_BASE + "profil.html",
+        "name": "Profil Legodingo13",
+        "inLanguage": "fr-FR",
+        "mainEntity": {
+            "@type": "Person",
+            "name": "Legodingo13",
+            "url": SITE_BASE + "profil.html",
+            "sameAs": [YOUTUBE_URL, GUNS_URL]
+        }
+    },
 )
 
 
 # TABLEAU - ANCIENNE URL CONSERVÉE POUR COMPATIBILITÉ
-# Même contenu que profil.html afin que TOUS les anciens liens affichent aussi le tableau Excel.
-shell(
+# Pour éviter deux copies SEO du même contenu, l'ancienne URL redirige maintenant
+# de façon permanente (meta refresh 0 s, compatible GitHub Pages) vers profil.html.
+write_permanent_html_redirect(
     "tableau.html",
-    "profil",
-    "Profil Legodingo13 - Tableau Excel des mondes FOE",
-    "Profil Legodingo13 : dernière version du tableau Excel des mondes Forge of Empires.",
-    profil_body,
-    og_image="profil_tableau.png",
+    SITE_BASE + "profil.html",
+    "Profil Legodingo13 – nouvelle adresse",
 )
 
 
@@ -7025,25 +7318,45 @@ shell(
 # ROBOTS.TXT + SITEMAP.XML
 # =========================================================
 
+# Ce robots.txt reste utile pour les outils qui le consultent directement dans le
+# sous-dossier. Le vrai robots.txt de l'hôte legodingo13.github.io doit être placé
+# à la racine : il est fourni séparément dans le pack RACINE_GITHUB_PAGES.
 with open("_site/robots.txt", "w", encoding="utf-8") as f:
-    f.write(f"User-agent: *\nAllow: /\nSitemap: {SITE_BASE}sitemap.xml\n")
+    f.write(
+        "User-agent: *\n"
+        "Allow: /\n"
+        f"Sitemap: {SITE_BASE}sitemap.xml\n"
+    )
 
-sitemap_urls = [
-    SITE_BASE,
-    SITE_BASE + "discord.html",
-    SITE_BASE + "youtube.html",
-    SITE_BASE + "profil.html",
-    SITE_BASE + "tutoriels.html",
+build_lastmod = datetime.now(timezone.utc).date().isoformat()
+sitemap_entries = [
+    {"url": SITE_BASE, "lastmod": build_lastmod},
+    {"url": SITE_BASE + "discord.html", "lastmod": build_lastmod},
+    {"url": SITE_BASE + "youtube.html", "lastmod": build_lastmod},
+    {"url": SITE_BASE + "profil.html", "lastmod": build_lastmod},
+    {"url": SITE_BASE + "tutoriels.html", "lastmod": build_lastmod},
 ]
+for tutorial_page in tutorial_share_pages:
+    if isinstance(tutorial_page, dict) and tutorial_page.get("url"):
+        sitemap_entries.append({
+            "url": str(tutorial_page["url"]),
+            "lastmod": str(tutorial_page.get("lastmod") or build_lastmod),
+        })
 
 sitemap = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
 sitemap += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-for url in sitemap_urls:
-    sitemap += f"  <url><loc>{url}</loc></url>\n"
+for entry in sitemap_entries:
+    sitemap += "  <url>\n"
+    sitemap += f"    <loc>{html.escape(entry['url'], quote=False)}</loc>\n"
+    sitemap += f"    <lastmod>{html.escape(entry['lastmod'], quote=False)}</lastmod>\n"
+    sitemap += "  </url>\n"
 sitemap += "</urlset>\n"
 
 with open("_site/sitemap.xml", "w", encoding="utf-8") as f:
     f.write(sitemap)
+
+with open("_site/.nojekyll", "w", encoding="utf-8") as f:
+    f.write("")
 
 
 # =========================================================
@@ -7132,6 +7445,14 @@ for asset in assets:
         print(f"ATTENTION : {asset} est introuvable.")
 
 
+# Vérification Search Console par fichier HTML : si Google fournit un fichier du type
+# google1234567890abcdef.html et qu'il est placé à côté de update.py, il est publié automatiquement.
+for filename in os.listdir("."):
+    if re.fullmatch(r"google[A-Za-z0-9_-]+\.html", filename) and os.path.isfile(filename):
+        shutil.copy2(filename, os.path.join("_site", filename))
+        print(f"Google Search Console : fichier de vérification publié : {filename}")
+
+
 # =========================================================
 # FICHIER DE SUIVI
 # =========================================================
@@ -7147,4 +7468,4 @@ print(f"Discord : {member_count} membres / {online_count} en ligne")
 print(f"YouTube via SocialCounts : {youtube_subscribers} abonnés")
 print(f"YouTube RSS : {len(youtube_videos)} vidéo(s) récente(s) détectée(s)")
 print("Pages générées : Accueil, Discord, YouTube, Profil Legodingo13, Tutoriels de jeu, compatibilité tableau.html")
-print(f"Pages de partage Open Graph générées : {len(tutorial_share_pages)}")
+print(f"Pages de tutoriels individuelles indexables générées : {len(tutorial_share_pages)}")
