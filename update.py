@@ -32,6 +32,7 @@ FOE_WIKI_URL = "https://fr.wiki.forgeofempires.com/index.php?title=Accueil"
 FORGEDB_URL = "https://foestats.com/"
 FOE_SCOREDB_URL = "https://foe.scoredb.io/Worlds"
 FOE_DATA_URL = "https://foe-data.ovh/"
+BANANA_FOE_URL = "https://foe-for-bananas.com/fr/"
 BANANA_DB_URL = "https://foe-buildings-database.streamlit.app/"
 FOE_TOOLS_URL = "https://foe.tools/fr/"
 
@@ -2470,6 +2471,64 @@ h2 { margin: 10px 0 16px; }
     }
 }
 
+
+
+/* =========================================================
+   CHOIX DES SITES — BORN TO BE A BANANA
+   ========================================================= */
+.banana-sites-trigger {
+    width: 100%;
+    appearance: none;
+    -webkit-appearance: none;
+    font: inherit;
+    text-align: center;
+    cursor: url("cursor_hover.cur"), pointer !important;
+}
+.banana-sites-modal {
+    width: min(100%, 560px);
+}
+.banana-sites-modal-intro {
+    margin: -3px 0 18px;
+    color: #c7cdd6;
+    line-height: 1.55;
+}
+.banana-sites-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+.banana-site-choice {
+    min-height: 92px;
+    padding: 18px 16px;
+    border-radius: 14px;
+    border: 1px solid rgba(255,212,147,.22);
+    background: rgba(255,255,255,.055);
+    color: #f5f6f8;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 17px;
+    font-weight: 800;
+    line-height: 1.3;
+    transition: transform .18s ease, background .18s ease, border-color .18s ease;
+}
+.banana-site-choice:hover,
+.banana-site-choice:focus-visible {
+    transform: translateY(-2px);
+    background: rgba(255,212,147,.10);
+    border-color: rgba(255,212,147,.48);
+    color: #ffd493;
+}
+.banana-site-choice:focus-visible {
+    outline: 2px solid rgba(255,218,152,.88);
+    outline-offset: 2px;
+}
+@media (max-width: 620px) {
+    .banana-sites-actions { grid-template-columns: 1fr; }
+    .banana-site-choice { min-height: 72px; }
+}
 
 /* =========================================================
    STATISTIQUES ADMINISTRATEUR — ACCUEIL
@@ -5868,6 +5927,66 @@ Retrouve ici mes liens officiels, puis une sélection de sites, extensions et ch
     </div>
 </div>
 
+<div id="bananaSitesModal" class="tutorial-modal-overlay" hidden>
+    <div class="tutorial-modal banana-sites-modal" role="dialog" aria-modal="true" aria-labelledby="bananaSitesTitle">
+        <button
+            type="button"
+            class="tutorial-modal-close foe-modal-close"
+            data-close-banana-sites
+            data-foe-arrow
+            data-normal="foe_close_normal.png"
+            data-hover="foe_close_hover.png"
+            data-down="foe_close_press.png"
+            aria-label="Fermer"
+            title="Fermer"
+        ><img src="foe_close_normal.png" alt=""></button>
+        <h3 id="bananaSitesTitle">Born To Be A Banana</h3>
+        <p class="banana-sites-modal-intro">Choisis le site que tu souhaites ouvrir :</p>
+        <div class="banana-sites-actions">
+            <a class="banana-site-choice" href="{BANANA_FOE_URL}" target="_blank" rel="noopener noreferrer">FOE for Bananas</a>
+            <a class="banana-site-choice" href="{BANANA_DB_URL}" target="_blank" rel="noopener noreferrer">FOE Building Database</a>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {{
+    const trigger = document.getElementById("bananaSitesTrigger");
+    const modal = document.getElementById("bananaSitesModal");
+    if (!trigger || !modal) return;
+
+    // .card utilise backdrop-filter : on place la fenêtre directement sous <body>
+    // afin que son position:fixed reste toujours centré sur l'écran visible.
+    if (modal.parentElement !== document.body) {{
+        document.body.appendChild(modal);
+    }}
+
+    function openBananaSites() {{
+        modal.hidden = false;
+        document.documentElement.style.overflow = "hidden";
+        const firstLink = modal.querySelector(".banana-site-choice");
+        if (firstLink) setTimeout(() => firstLink.focus(), 20);
+    }}
+
+    function closeBananaSites() {{
+        modal.hidden = true;
+        document.documentElement.style.overflow = "";
+        trigger.focus();
+    }}
+
+    trigger.addEventListener("click", openBananaSites);
+    modal.querySelectorAll("[data-close-banana-sites]").forEach(button => {{
+        button.addEventListener("click", closeBananaSites);
+    }});
+    modal.addEventListener("click", event => {{
+        if (event.target === modal) closeBananaSites();
+    }});
+    document.addEventListener("keydown", event => {{
+        if (event.key === "Escape" && !modal.hidden) closeBananaSites();
+    }});
+}})();
+</script>
+
 <div class="stats">
     <div class="stat"><span class="number">{member_count}</span><span class="label">membres sur le serveur Discord</span></div>
     <div class="stat"><span class="number">{youtube_subscribers}</span><span class="label">abonnés sur YouTube</span></div>
@@ -5920,12 +6039,12 @@ Retrouve ici mes liens officiels, puis une sélection de sites, extensions et ch
         <div class="external-badge">SITE TIERS</div>
     </a>
 
-    <a class="tile" href="{BANANA_DB_URL}" target="_blank" rel="noopener noreferrer">
+    <button class="tile banana-sites-trigger" id="bananaSitesTrigger" type="button" aria-haspopup="dialog" aria-controls="bananaSitesModal">
         <img src="banana_db.png" loading="lazy" decoding="async" class="tile-logo third-party-logo" alt="Born To Be A Banana">
         <div class="tile-title">Born To Be A Banana</div>
-        <div class="tile-detail">Base de données consacrée aux bâtiments de Forge of Empires.</div>
-        <div class="external-badge">SITE TIERS</div>
-    </a>
+        <div class="tile-detail">Accéder aux outils Born To Be A Banana pour Forge of Empires.</div>
+        <div class="external-badge">SITES TIERS</div>
+    </button>
 
     <a class="tile" href="{FOE_TOOLS_URL}" target="_blank" rel="noopener noreferrer">
         <img src="foe_tools.png" loading="lazy" decoding="async" class="tile-logo third-party-logo" alt="FOE Tools">
