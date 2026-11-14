@@ -5950,7 +5950,7 @@ Retrouve ici mes liens officiels, puis une sélection de sites, extensions et ch
 </div>
 
 <script>
-(function () {{
+document.addEventListener("DOMContentLoaded", function () {{
     const trigger = document.getElementById("bananaSitesTrigger");
     const modal = document.getElementById("bananaSitesModal");
     if (!trigger || !modal) return;
@@ -5984,7 +5984,7 @@ Retrouve ici mes liens officiels, puis une sélection de sites, extensions et ch
     document.addEventListener("keydown", event => {{
         if (event.key === "Escape" && !modal.hidden) closeBananaSites();
     }});
-}})();
+}});
 </script>
 
 <div class="stats">
