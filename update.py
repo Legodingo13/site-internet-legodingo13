@@ -2475,6 +2475,7 @@ h2 { margin: 10px 0 16px; }
 
 /* =========================================================
    CHOIX DES SITES — BORN TO BE A BANANA
+   Style « cartes premium »
    ========================================================= */
 .banana-sites-trigger {
     width: 100%;
@@ -2485,49 +2486,124 @@ h2 { margin: 10px 0 16px; }
     cursor: url("cursor_hover.cur"), pointer !important;
 }
 .banana-sites-modal {
-    width: min(100%, 560px);
+    width: min(100%, 760px);
+    padding: 28px;
+}
+.banana-sites-premium-head {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding-right: 42px;
+    margin-bottom: 22px;
+}
+.banana-sites-premium-head > img {
+    width: 84px;
+    height: 78px;
+    object-fit: contain;
+    flex: 0 0 auto;
+}
+.banana-sites-premium-head h3 {
+    margin: 0 0 5px;
+    font-size: 25px;
 }
 .banana-sites-modal-intro {
-    margin: -3px 0 18px;
-    color: #c7cdd6;
-    line-height: 1.55;
+    margin: 0;
+    color: #bfc5cf;
+    line-height: 1.5;
 }
 .banana-sites-actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
+    gap: 14px;
 }
 .banana-site-choice {
-    min-height: 92px;
-    padding: 18px 16px;
-    border-radius: 14px;
-    border: 1px solid rgba(255,212,147,.22);
-    background: rgba(255,255,255,.055);
+    min-height: 220px;
+    padding: 20px;
+    border-radius: 17px;
+    border: 1px solid rgba(255,255,255,.11);
+    background: linear-gradient(145deg, rgba(255,255,255,.07), rgba(255,255,255,.035));
     color: #f5f6f8;
     text-decoration: none;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    font-size: 17px;
-    font-weight: 800;
-    line-height: 1.3;
+    flex-direction: column;
+    text-align: left;
+    line-height: 1.4;
     transition: transform .18s ease, background .18s ease, border-color .18s ease;
 }
 .banana-site-choice:hover,
 .banana-site-choice:focus-visible {
-    transform: translateY(-2px);
-    background: rgba(255,212,147,.10);
-    border-color: rgba(255,212,147,.48);
-    color: #ffd493;
+    transform: translateY(-3px);
+    background: rgba(255,212,147,.075);
+    border-color: rgba(255,210,130,.48);
+    color: #f5f6f8;
 }
 .banana-site-choice:focus-visible {
     outline: 2px solid rgba(255,218,152,.88);
     outline-offset: 2px;
 }
-@media (max-width: 620px) {
+.banana-site-choice-topline {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+.banana-site-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 25px;
+    padding: 5px 9px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,212,147,.22);
+    background: rgba(255,212,147,.07);
+    color: #d9c39f;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .3px;
+}
+.banana-site-iconbox {
+    width: 54px;
+    height: 54px;
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    background: rgba(255,212,147,.10);
+    border: 1px solid rgba(255,212,147,.18);
+    overflow: hidden;
+    flex: 0 0 auto;
+}
+.banana-site-iconbox img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.banana-site-iconbox.banana-emoji {
+    font-size: 31px;
+    line-height: 1;
+}
+.banana-site-choice h4 {
+    margin: 18px 0 8px;
+    font-size: 20px;
+    color: #f5f6f8;
+}
+.banana-site-choice p {
+    margin: 0;
+    color: #c7ccd5;
+    line-height: 1.5;
+    font-size: 14px;
+}
+.banana-site-cta {
+    margin-top: auto;
+    padding-top: 20px;
+    color: #ffd493;
+    font-weight: 800;
+}
+@media (max-width: 650px) {
+    .banana-sites-modal { padding: 22px 18px; }
+    .banana-sites-premium-head { align-items: flex-start; }
+    .banana-sites-premium-head > img { width: 68px; height: 64px; }
+    .banana-sites-premium-head h3 { font-size: 22px; }
     .banana-sites-actions { grid-template-columns: 1fr; }
-    .banana-site-choice { min-height: 72px; }
+    .banana-site-choice { min-height: 170px; }
 }
 
 /* =========================================================
@@ -5940,11 +6016,32 @@ Retrouve ici mes liens officiels, puis une sélection de sites, extensions et ch
             aria-label="Fermer"
             title="Fermer"
         ><img src="foe_close_normal.png" alt=""></button>
-        <h3 id="bananaSitesTitle">Born To Be A Banana</h3>
-        <p class="banana-sites-modal-intro">Choisis le site que tu souhaites ouvrir :</p>
+        <div class="banana-sites-premium-head">
+            <img src="banana_db.png" alt="Born To Be A Banana">
+            <div>
+                <h3 id="bananaSitesTitle">Born To Be A Banana</h3>
+                <p class="banana-sites-modal-intro">Choisis l’outil qui correspond à ce que tu veux faire.</p>
+            </div>
+        </div>
         <div class="banana-sites-actions">
-            <a class="banana-site-choice" href="{BANANA_FOE_URL}" target="_blank" rel="noopener noreferrer">FOE for Bananas</a>
-            <a class="banana-site-choice" href="{BANANA_DB_URL}" target="_blank" rel="noopener noreferrer">FOE Building Database</a>
+            <a class="banana-site-choice" href="{BANANA_FOE_URL}" target="_blank" rel="noopener noreferrer">
+                <div class="banana-site-choice-topline">
+                    <span class="banana-site-badge">OUTIL FOE</span>
+                    <span class="banana-site-iconbox"><img src="foe_for_bananas_logo.png" alt="Logo FOE for Bananas"></span>
+                </div>
+                <h4>FOE for Bananas</h4>
+                <p>Accéder au nouveau portail Born To Be A Banana et à ses outils Forge of Empires.</p>
+                <span class="banana-site-cta">Ouvrir le site →</span>
+            </a>
+            <a class="banana-site-choice" href="{BANANA_DB_URL}" target="_blank" rel="noopener noreferrer">
+                <div class="banana-site-choice-topline">
+                    <span class="banana-site-badge">BASE DE DONNÉES</span>
+                    <span class="banana-site-iconbox banana-emoji" aria-hidden="true">🍌</span>
+                </div>
+                <h4>FOE Building Database</h4>
+                <p>Consulter la base de données consacrée aux bâtiments de Forge of Empires.</p>
+                <span class="banana-site-cta">Ouvrir la base →</span>
+            </a>
         </div>
     </div>
 </div>
@@ -7505,6 +7602,7 @@ assets = [
     "foe_scoredb.png",
     "foe_data.png",
     "banana_db.png",
+    "foe_for_bananas_logo.png",
     "foe_tools.png",
 
     # Logos des extensions
