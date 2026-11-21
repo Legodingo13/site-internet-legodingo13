@@ -1129,6 +1129,9 @@ h2 { margin: 10px 0 16px; }
     font-size: 26px;
     line-height: 1;
 }
+.tutorial-video-block {
+    width: 100%;
+}
 .tutorial-video-wrap {
     position: relative;
     width: 100%;
@@ -1136,6 +1139,14 @@ h2 { margin: 10px 0 16px; }
     border-radius: 14px;
     overflow: hidden;
     background: #000;
+}
+.tutorial-video-caption {
+    margin-top: 9px;
+    color: #cfd4dc;
+    font-size: 14px;
+    line-height: 1.5;
+    text-align: center;
+    white-space: pre-wrap;
 }
 .tutorial-video-wrap iframe,
 .tutorial-video-wrap video {
@@ -1631,9 +1642,38 @@ h2 { margin: 10px 0 16px; }
     border-radius: 12px;
     background: #000;
 }
+.tutorial-admin-video-description-label {
+    display: grid;
+    gap: 6px;
+    width: min(720px, 100%);
+    margin-top: 12px;
+}
+.tutorial-admin-video-description-label > span {
+    color: #d7dce4;
+    font-size: 12px;
+    font-weight: 800;
+}
+.tutorial-admin-video-description-input,
+.tutorial-video-description-input {
+    width: 100%;
+    min-height: 72px;
+    resize: vertical;
+    border: 1px solid rgba(255,255,255,.13);
+    border-radius: 10px;
+    background: rgba(8,10,15,.56);
+    color: #f2f4f7;
+    padding: 10px 11px;
+    font: inherit;
+    line-height: 1.45;
+}
+.tutorial-admin-video-description-input:focus,
+.tutorial-video-description-input:focus {
+    outline: none;
+    border-color: rgba(255,196,108,.48);
+}
 .tutorial-video-source-tabs {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
     margin: 14px 0 16px;
 }
@@ -1684,8 +1724,65 @@ h2 { margin: 10px 0 16px; }
     font-size: 12px;
     line-height: 1.45;
 }
+.tutorial-video-existing-box {
+    display: grid;
+    gap: 10px;
+    padding: 15px;
+    border: 1px dashed rgba(255,255,255,.17);
+    border-radius: 12px;
+    background: rgba(255,255,255,.025);
+}
+.tutorial-video-existing-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+}
+.tutorial-video-existing-select {
+    width: 100%;
+    min-width: 0;
+    border: 1px solid rgba(255,255,255,.13);
+    border-radius: 10px;
+    background: rgba(8,10,15,.56);
+    color: #f2f4f7;
+    padding: 10px 11px;
+    font: inherit;
+}
+.tutorial-video-existing-refresh {
+    min-height: 40px;
+    border: 1px solid rgba(255,255,255,.13);
+    border-radius: 10px;
+    background: rgba(255,255,255,.05);
+    color: #e8ebf0;
+    padding: 8px 11px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.tutorial-video-existing-status {
+    color: #aeb5c1;
+    font-size: 12px;
+    line-height: 1.45;
+}
+.tutorial-video-existing-preview {
+    display: block;
+    width: 100%;
+    max-height: 300px;
+    border-radius: 10px;
+    background: #000;
+}
+.tutorial-video-description-field {
+    display: grid;
+    gap: 6px;
+    margin-top: 14px;
+}
+.tutorial-video-description-field > span {
+    color: #d7dce4;
+    font-size: 12px;
+    font-weight: 800;
+}
 @media (max-width: 560px) {
     .tutorial-video-source-tabs { grid-template-columns: 1fr; }
+    .tutorial-video-existing-row { grid-template-columns: 1fr; }
 }
 
 .tutorial-modal-overlay {
@@ -3287,6 +3384,11 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
     const videoUrlInput = document.getElementById("tutorialVideoUrlInput");
     const videoUploadInput = document.getElementById("tutorialVideoUploadInput");
     const videoUploadSelected = document.getElementById("tutorialVideoUploadSelected");
+    const videoExistingSelect = document.getElementById("tutorialVideoExistingSelect");
+    const videoExistingRefresh = document.getElementById("tutorialVideoExistingRefresh");
+    const videoExistingStatus = document.getElementById("tutorialVideoExistingStatus");
+    const videoExistingPreview = document.getElementById("tutorialVideoExistingPreview");
+    const videoDescriptionInput = document.getElementById("tutorialVideoDescriptionInput");
     const videoError = document.getElementById("tutorialVideoError");
     const videoAddButton = document.getElementById("tutorialVideoAdd");
     const videoSourceTabs = [...document.querySelectorAll("[data-video-source-mode]")];
@@ -3298,6 +3400,7 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
     let videoTargetMenuId = null;
     let videoInputMode = "youtube";
     let selectedVideoFile = null;
+    let existingGithubVideos = null;
 
     const deleteMenuModal = document.getElementById("tutorialDeleteMenuModal");
     const deleteMenuSelect = document.getElementById("tutorialDeleteMenuSelect");
@@ -3394,6 +3497,7 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
                     delete block.title;
                 }
                 if (block.type === "video") {
+                    block.description = typeof block.description === "string" ? block.description : "";
                     const uploaded = block.source === "upload" || String(block.src || "").startsWith("tutorial-videos/");
                     if (uploaded) {
                         block.source = "upload";
@@ -3629,6 +3733,77 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
         return `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${encoded}`;
     }
 
+    function videoRawGithubUrl(path) {
+        const encoded = String(path || "").split("/").filter(Boolean).map(encodeURIComponent).join("/");
+        return `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${encodeURIComponent(REPO_BRANCH)}/${encoded}`;
+    }
+
+    function renderExistingGithubVideos() {
+        if (!videoExistingSelect) return;
+        const items = Array.isArray(existingGithubVideos) ? existingGithubVideos : [];
+        const previous = videoExistingSelect.value;
+        videoExistingSelect.innerHTML = '<option value="">Choisir une vidéo déjà importée…</option>' + items.map(item =>
+            `<option value="${escapeHtml(item.path)}">${escapeHtml(item.name)} · ${escapeHtml(formatBytes(item.size))}</option>`
+        ).join("");
+        if (items.some(item => item.path === previous)) videoExistingSelect.value = previous;
+        if (videoExistingStatus) {
+            videoExistingStatus.textContent = items.length
+                ? `${items.length} vidéo${items.length > 1 ? "s" : ""} disponible${items.length > 1 ? "s" : ""} dans GitHub.`
+                : "Aucune vidéo MP4/WebM n'est encore disponible dans tutorial-videos/.";
+        }
+        refreshExistingVideoPreview();
+    }
+
+    function refreshExistingVideoPreview() {
+        if (!videoExistingPreview || !videoExistingSelect) return;
+        const path = String(videoExistingSelect.value || "");
+        if (!path) {
+            videoExistingPreview.hidden = true;
+            videoExistingPreview.removeAttribute("src");
+            return;
+        }
+        videoExistingPreview.src = videoRawGithubUrl(path);
+        videoExistingPreview.hidden = false;
+    }
+
+    async function loadExistingGithubVideos(force = false) {
+        if (!force && Array.isArray(existingGithubVideos)) {
+            renderExistingGithubVideos();
+            return;
+        }
+        if (videoExistingStatus) videoExistingStatus.textContent = "Chargement des vidéos présentes sur GitHub…";
+        if (videoExistingSelect) {
+            videoExistingSelect.disabled = true;
+            videoExistingSelect.innerHTML = '<option value="">Chargement…</option>';
+        }
+        try {
+            const response = await githubRequest(videoApiUrl(VIDEO_UPLOAD_DIR) + `?ref=${encodeURIComponent(REPO_BRANCH)}`);
+            const items = Array.isArray(response) ? response : [];
+            existingGithubVideos = items
+                .filter(item => item && item.type === "file" && /\.(?:mp4|webm)$/i.test(String(item.name || "")))
+                .map(item => ({
+                    name: String(item.name || "Vidéo"),
+                    path: String(item.path || ""),
+                    size: Number(item.size || 0) || 0,
+                    mime: String(item.name || "").toLowerCase().endsWith(".webm") ? "video/webm" : "video/mp4"
+                }))
+                .filter(item => item.path.startsWith(VIDEO_UPLOAD_DIR + "/"))
+                .sort((a, b) => a.name.localeCompare(b.name, "fr", { sensitivity: "base" }));
+        } catch (error) {
+            const message = String(error?.message || error || "");
+            if (message.includes("GitHub 404")) {
+                existingGithubVideos = [];
+            } else {
+                console.error(error);
+                existingGithubVideos = [];
+                if (videoExistingStatus) videoExistingStatus.textContent = "Impossible de charger la bibliothèque GitHub pour le moment.";
+            }
+        } finally {
+            if (videoExistingSelect) videoExistingSelect.disabled = false;
+            renderExistingGithubVideos();
+        }
+    }
+
     function fileToBase64(file) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -3788,15 +3963,17 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
             return `<div class="tutorial-public-block tutorial-image-grid ${displaySizeClass}">${cells}</div>`;
         }
         if (block.type === "video") {
+            const description = String(block.description || "").trim();
+            const caption = description ? `<div class="tutorial-video-caption">${escapeHtml(description)}</div>` : "";
             if (block.source === "upload") {
                 const src = String(block.src || "");
                 if (!src.startsWith(VIDEO_UPLOAD_DIR + "/")) return "";
                 const mime = String(block.mime || (src.toLowerCase().endsWith(".webm") ? "video/webm" : "video/mp4"));
-                return `<div class="tutorial-public-block tutorial-video-wrap"><video controls playsinline preload="metadata" loading="lazy" aria-label="Vidéo du tutoriel"><source src="${escapeHtml(src)}" type="${escapeHtml(mime)}">Ton navigateur ne peut pas lire cette vidéo.</video></div>`;
+                return `<div class="tutorial-public-block tutorial-video-block"><div class="tutorial-video-wrap"><video controls playsinline preload="metadata" loading="lazy" aria-label="Vidéo du tutoriel"><source src="${escapeHtml(src)}" type="${escapeHtml(mime)}">Ton navigateur ne peut pas lire cette vidéo.</video></div>${caption}</div>`;
             }
             const id = youtubeId(block.url);
             if (!id) return "";
-            return `<div class="tutorial-public-block tutorial-video-wrap"><iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}" title="Vidéo YouTube" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
+            return `<div class="tutorial-public-block tutorial-video-block"><div class="tutorial-video-wrap"><iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}" title="Vidéo YouTube" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>${caption}</div>`;
         }
         return "";
     }
@@ -3907,13 +4084,14 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
             </div>`;
         }
         if (block.type === "video") {
+            const descriptionField = `<label class="tutorial-admin-video-description-label"><span>Description de la vidéo</span><textarea class="tutorial-admin-video-description-input" maxlength="500" placeholder="Description facultative affichée sous la vidéo" data-action="video-description" data-menu-id="${menu.id}" data-block-id="${block.id}">${escapeHtml(block.description || "")}</textarea></label>`;
             if (block.source === "upload") {
                 const pendingSrc = getPendingVideoPreviewUrl(block.id);
                 const src = pendingSrc || String(block.src || "");
-                const label = block.pending ? "Vidéo locale prête à être envoyée" : "Vidéo importée";
-                return `<div class="tutorial-admin-block" data-block-id="${block.id}">${controls}<div class="tutorial-admin-video-preview"><strong>${label}</strong><br>${escapeHtml(block.name || block.src || "Vidéo")} · ${escapeHtml(formatBytes(block.size || pendingVideoFiles.get(block.id)?.size || 0))}${src ? `<video controls playsinline preload="metadata" src="${escapeHtml(src)}"></video>` : ""}</div></div>`;
+                const label = block.pending ? "Vidéo locale prête à être envoyée" : "Vidéo GitHub";
+                return `<div class="tutorial-admin-block" data-block-id="${block.id}">${controls}<div class="tutorial-admin-video-preview"><strong>${label}</strong><br>${escapeHtml(block.name || block.src || "Vidéo")} · ${escapeHtml(formatBytes(block.size || pendingVideoFiles.get(block.id)?.size || 0))}${src ? `<video controls playsinline preload="metadata" src="${escapeHtml(src)}"></video>` : ""}${descriptionField}</div></div>`;
             }
-            return `<div class="tutorial-admin-block" data-block-id="${block.id}">${controls}<div class="tutorial-admin-video-preview"><strong>Vidéo YouTube</strong><br>${escapeHtml(block.url || "")}</div></div>`;
+            return `<div class="tutorial-admin-block" data-block-id="${block.id}">${controls}<div class="tutorial-admin-video-preview"><strong>Vidéo YouTube</strong><br>${escapeHtml(block.url || "")}${descriptionField}</div></div>`;
         }
         return "";
     }
@@ -4395,6 +4573,16 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
             });
         });
 
+        accordion.querySelectorAll('[data-action="video-description"]').forEach(input => {
+            input.addEventListener("input", () => {
+                const menu = findMenu(input.dataset.menuId);
+                const block = findBlock(menu, input.dataset.blockId);
+                if (!menu || !block || block.type !== "video") return;
+                block.description = input.value;
+                markDirty();
+            });
+        });
+
         accordion.querySelectorAll('[data-action="move-image-up"], [data-action="move-image-down"]').forEach(button => {
             button.addEventListener("click", () => {
                 const menu = findMenu(button.dataset.menuId);
@@ -4825,13 +5013,15 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
     }
 
     function setVideoInputMode(mode) {
-        videoInputMode = mode === "upload" ? "upload" : "youtube";
+        videoInputMode = ["youtube", "upload", "github"].includes(mode) ? mode : "youtube";
         videoSourceTabs.forEach(button => button.classList.toggle("active", button.dataset.videoSourceMode === videoInputMode));
         videoSourcePanels.forEach(panel => { panel.hidden = panel.dataset.videoSourcePanel !== videoInputMode; });
         videoError.textContent = "";
+        if (videoInputMode === "github") loadExistingGithubVideos(false);
         setTimeout(() => {
             if (videoInputMode === "youtube") videoUrlInput.focus();
-            else videoUploadInput.focus();
+            else if (videoInputMode === "upload") videoUploadInput.focus();
+            else if (videoExistingSelect) videoExistingSelect.focus();
         }, 20);
     }
 
@@ -4847,6 +5037,9 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
         videoTargetMenuId = menuId;
         videoUrlInput.value = "";
         videoUploadInput.value = "";
+        if (videoDescriptionInput) videoDescriptionInput.value = "";
+        if (videoExistingSelect) videoExistingSelect.value = "";
+        if (videoExistingPreview) { videoExistingPreview.hidden = true; videoExistingPreview.removeAttribute("src"); }
         selectedVideoFile = null;
         refreshSelectedVideoLabel();
         videoError.textContent = "";
@@ -4858,11 +5051,15 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
         videoTargetMenuId = null;
         selectedVideoFile = null;
         videoUploadInput.value = "";
+        if (videoDescriptionInput) videoDescriptionInput.value = "";
+        if (videoExistingSelect) videoExistingSelect.value = "";
+        if (videoExistingPreview) { videoExistingPreview.hidden = true; videoExistingPreview.removeAttribute("src"); }
         videoError.textContent = "";
     }
     function addVideoFromModal() {
         const menu = findMenu(videoTargetMenuId);
         if (!menu) return closeVideoModal();
+        const description = String(videoDescriptionInput?.value || "").trim();
 
         if (videoInputMode === "youtube") {
             const id = youtubeId(videoUrlInput.value);
@@ -4870,11 +5067,11 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
                 videoError.textContent = "Entre un lien YouTube valide.";
                 return;
             }
-            menu.blocks.push({ id: uid("video"), type: "video", source: "youtube", url: videoUrlInput.value.trim() });
-        } else {
+            menu.blocks.push({ id: uid("video"), type: "video", source: "youtube", url: videoUrlInput.value.trim(), description });
+        } else if (videoInputMode === "upload") {
             const file = selectedVideoFile;
             if (!file) {
-                videoError.textContent = "Choisis une vidéo à importer.";
+                videoError.textContent = "Choisis une vidéo à importer depuis ton PC.";
                 return;
             }
             if (!isSupportedUploadedVideo(file)) {
@@ -4895,7 +5092,26 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
                 name: file.name,
                 mime: file.type || (file.name.toLowerCase().endsWith(".webm") ? "video/webm" : "video/mp4"),
                 size: file.size,
-                pending: true
+                pending: true,
+                description
+            });
+        } else {
+            const path = String(videoExistingSelect?.value || "");
+            const existing = (existingGithubVideos || []).find(item => item.path === path);
+            if (!existing) {
+                videoError.textContent = "Choisis une vidéo déjà présente sur GitHub.";
+                return;
+            }
+            menu.blocks.push({
+                id: uid("video"),
+                type: "video",
+                source: "upload",
+                src: existing.path,
+                name: existing.name,
+                mime: existing.mime,
+                size: existing.size,
+                pending: false,
+                description
             });
         }
         openMenuId = menu.id;
@@ -5089,9 +5305,9 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
             });
             cleanData.updatedAt = nowIso;
 
-            const oldVideoPaths = collectUploadedVideoPaths(previousData);
-            const newVideoPaths = collectUploadedVideoPaths(cleanData);
-            const removedVideoPaths = [...oldVideoPaths].filter(path => !newVideoPaths.has(path));
+            // Les vidéos déjà importées forment désormais une bibliothèque réutilisable.
+            // Supprimer un bloc vidéo du tutoriel ne supprime donc plus le fichier GitHub :
+            // il reste disponible dans l'onglet « Déjà sur GitHub ».
 
             setStatus("Création d’une mise à jour GitHub unique…", "");
             const refData = await githubRequest(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/git/ref/heads/${encodeURIComponent(REPO_BRANCH)}`);
@@ -5118,8 +5334,6 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
                 tree.push({ path: change.path, mode: "100644", type: "blob", sha: blob.sha });
             }
 
-            removedVideoPaths.forEach(path => tree.push({ path, mode: "100644", type: "blob", sha: null }));
-
             const newTree = await githubRequest(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/git/trees`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -5130,7 +5344,7 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    message: videoChanges.length || removedVideoPaths.length
+                    message: videoChanges.length
                         ? "Mise à jour Tutoriels de jeu et vidéos"
                         : "Mise à jour de la page Tutoriels de jeu",
                     tree: newTree.sha,
@@ -5204,6 +5418,11 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
     videoAddButton.addEventListener("click", addVideoFromModal);
     videoUrlInput.addEventListener("keydown", event => { if (event.key === "Enter") addVideoFromModal(); });
     videoSourceTabs.forEach(button => button.addEventListener("click", () => setVideoInputMode(button.dataset.videoSourceMode)));
+    if (videoExistingRefresh) videoExistingRefresh.addEventListener("click", () => loadExistingGithubVideos(true));
+    if (videoExistingSelect) videoExistingSelect.addEventListener("change", () => {
+        refreshExistingVideoPreview();
+        videoError.textContent = "";
+    });
     videoUploadInput.addEventListener("change", () => {
         selectedVideoFile = videoUploadInput.files && videoUploadInput.files[0] ? videoUploadInput.files[0] : null;
         refreshSelectedVideoLabel();
@@ -5657,13 +5876,16 @@ def render_static_tutorial_blocks(menu, slug):
         if block_type == "video":
             source = str(block.get("source", "") or "")
             src = str(block.get("src", "") or "").strip()
+            description = str(block.get("description", "") or "").strip()
+            caption = f'<div class="guide-video-caption">{html.escape(description)}</div>' if description else ""
             if source == "upload" and src.startswith("tutorial-videos/"):
                 mime = str(block.get("mime", "") or ("video/webm" if src.lower().endswith(".webm") else "video/mp4"))
                 safe_src = "../" + quote(src, safe="/-._~")
                 parts.append(
-                    '<section class="guide-block guide-video">'
+                    '<section class="guide-block guide-video-block">'
+                    '<div class="guide-video">'
                     f'<video controls playsinline preload="metadata" loading="lazy"><source src="{html.escape(safe_src, quote=True)}" type="{html.escape(mime, quote=True)}">Votre navigateur ne peut pas lire cette vidéo.</video>'
-                    '</section>'
+                    '</div>' + caption + '</section>'
                 )
                 continue
             url = str(block.get("url", "") or "").strip()
@@ -5672,9 +5894,10 @@ def render_static_tutorial_blocks(menu, slug):
                 safe_id = quote(video_id, safe="")
                 menu_title = html.escape(str((menu or {}).get("title", "")), quote=True)
                 parts.append(
-                    '<section class="guide-block guide-video">'
+                    '<section class="guide-block guide-video-block">'
+                    '<div class="guide-video">'
                     f'<iframe src="https://www.youtube-nocookie.com/embed/{safe_id}" title="Vidéo du tutoriel {menu_title}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>'
-                    '</section>'
+                    '</div>' + caption + '</section>'
                 )
             continue
     return "\n".join(parts) or '<p class="guide-empty">Le contenu de ce tutoriel est disponible sur la page principale des tutoriels.</p>'
@@ -5747,8 +5970,10 @@ a { color:#ffd493; }
 .guide-images-grid.guide-size-medium { grid-template-columns:repeat(auto-fit,minmax(min(210px,100%),320px)); }
 .guide-images-grid.guide-size-small { grid-template-columns:repeat(auto-fit,minmax(min(160px,100%),240px)); }
 .guide-figure figcaption { margin-top:8px; color:#cfd4dc; font-size:14px; }
+.guide-video-block { width:100%; }
 .guide-video { position:relative; width:100%; aspect-ratio:16/9; overflow:hidden; border-radius:15px; background:#000; }
 .guide-video iframe,.guide-video video { position:absolute; inset:0; width:100%; height:100%; border:0; object-fit:contain; background:#000; }
+.guide-video-caption { margin-top:9px; color:#cfd4dc; font-size:14px; line-height:1.5; text-align:center; white-space:pre-wrap; }
 .guide-actions { display:flex; flex-wrap:wrap; justify-content:center; gap:10px; padding:0 38px 34px; }
 .guide-button { display:inline-block; padding:12px 17px; border-radius:11px; text-decoration:none; color:#1d160f; background:linear-gradient(135deg,#ffd493,#e8a34b); font-weight:800; }
 .guide-button.secondary { color:#eceff5; background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.12); }
@@ -7274,11 +7499,12 @@ Retrouve ici les tutoriels et guides de jeu publiés par Legodingo13.
     <div class="tutorial-modal" role="dialog" aria-modal="true" aria-labelledby="tutorialVideoTitle">
         <button type="button" class="tutorial-modal-close" data-close-video aria-label="Fermer">×</button>
         <h3 id="tutorialVideoTitle">Ajouter une vidéo</h3>
-        <p class="tutorial-modal-message">Choisis entre une vidéo YouTube ou un fichier vidéo hébergé directement sur le site.</p>
+        <p class="tutorial-modal-message">Choisis un lien YouTube, importe une nouvelle vidéo depuis ton PC ou réutilise une vidéo déjà présente dans GitHub.</p>
 
         <div class="tutorial-video-source-tabs" role="tablist" aria-label="Source de la vidéo">
             <button type="button" class="tutorial-video-source-tab active" data-video-source-mode="youtube">▶ Lien YouTube</button>
-            <button type="button" class="tutorial-video-source-tab" data-video-source-mode="upload">⬆ Importer une vidéo</button>
+            <button type="button" class="tutorial-video-source-tab" data-video-source-mode="upload">⬆ Fichier du PC</button>
+            <button type="button" class="tutorial-video-source-tab" data-video-source-mode="github">☁ Déjà sur GitHub</button>
         </div>
 
         <div class="tutorial-video-source-panel" data-video-source-panel="youtube">
@@ -7288,13 +7514,33 @@ Retrouve ici les tutoriels et guides de jeu publiés par Legodingo13.
 
         <div class="tutorial-video-source-panel" data-video-source-panel="upload" hidden>
             <div class="tutorial-video-upload-box">
-                <label for="tutorialVideoUploadInput"><strong>Fichier vidéo :</strong></label>
+                <label for="tutorialVideoUploadInput"><strong>Fichier vidéo de ton PC :</strong></label>
                 <input id="tutorialVideoUploadInput" type="file" accept="video/mp4,video/webm,.mp4,.webm">
                 <div id="tutorialVideoUploadSelected" class="tutorial-video-upload-selected">Aucun fichier sélectionné.</div>
                 <div class="tutorial-video-upload-info">Formats acceptés : MP4 ou WebM · Taille maximale : 25 Mio. Pour la meilleure compatibilité, privilégie MP4 (H.264 + AAC).</div>
             </div>
-            <div class="tutorial-video-upload-warning">La vidéo sera stockée comme un fichier séparé dans le dépôt GitHub, puis publiée avec le site. Elle ne sera pas intégrée en base64 dans tutoriels-data.json.</div>
+            <div class="tutorial-video-upload-warning">Ce mode ajoute un nouveau fichier dans <strong>tutorial-videos/</strong>. Si la vidéo a déjà été importée auparavant, utilise plutôt « Déjà sur GitHub » pour éviter un doublon.</div>
         </div>
+
+        <div class="tutorial-video-source-panel" data-video-source-panel="github" hidden>
+            <div class="tutorial-video-existing-box">
+                <strong>Bibliothèque des vidéos déjà importées</strong>
+                <div class="tutorial-video-existing-row">
+                    <select id="tutorialVideoExistingSelect" class="tutorial-video-existing-select">
+                        <option value="">Choisir une vidéo déjà importée…</option>
+                    </select>
+                    <button id="tutorialVideoExistingRefresh" class="tutorial-video-existing-refresh" type="button">↻ Actualiser</button>
+                </div>
+                <div id="tutorialVideoExistingStatus" class="tutorial-video-existing-status">La liste sera chargée directement depuis GitHub.</div>
+                <video id="tutorialVideoExistingPreview" class="tutorial-video-existing-preview" controls playsinline preload="metadata" hidden></video>
+            </div>
+            <div class="tutorial-video-upload-warning">La vidéo choisie est réutilisée telle quelle : aucun nouveau fichier n’est envoyé et aucun doublon n’est créé.</div>
+        </div>
+
+        <label class="tutorial-video-description-field" for="tutorialVideoDescriptionInput">
+            <span>Description de la vidéo</span>
+            <textarea id="tutorialVideoDescriptionInput" class="tutorial-video-description-input" maxlength="500" placeholder="Description facultative affichée sous la vidéo"></textarea>
+        </label>
 
         <div id="tutorialVideoError" class="tutorial-modal-error"></div>
         <div class="tutorial-modal-actions">
