@@ -1137,12 +1137,15 @@ h2 { margin: 10px 0 16px; }
     overflow: hidden;
     background: #000;
 }
-.tutorial-video-wrap iframe {
+.tutorial-video-wrap iframe,
+.tutorial-video-wrap video {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
     border: 0;
+    object-fit: contain;
+    background: #000;
 }
 
 .tutorial-settings-wrap {
@@ -1619,6 +1622,70 @@ h2 { margin: 10px 0 16px; }
     color: #cbd1da;
     padding: 8px 34px 3px 0;
     overflow-wrap: anywhere;
+}
+.tutorial-admin-video-preview video {
+    display: block;
+    width: min(720px, 100%);
+    max-height: 405px;
+    margin-top: 10px;
+    border-radius: 12px;
+    background: #000;
+}
+.tutorial-video-source-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin: 14px 0 16px;
+}
+.tutorial-video-source-tab {
+    border: 1px solid rgba(255,255,255,.13);
+    background: rgba(255,255,255,.045);
+    color: #d9dde4;
+    border-radius: 10px;
+    padding: 11px 12px;
+    font-weight: 800;
+    cursor: pointer;
+}
+.tutorial-video-source-tab.active {
+    border-color: rgba(255,196,108,.55);
+    background: rgba(255,196,108,.12);
+    color: #ffd493;
+}
+.tutorial-video-source-panel[hidden] { display: none !important; }
+.tutorial-video-upload-box {
+    display: grid;
+    gap: 9px;
+    padding: 15px;
+    border: 1px dashed rgba(255,255,255,.17);
+    border-radius: 12px;
+    background: rgba(255,255,255,.025);
+}
+.tutorial-video-upload-box input[type="file"] {
+    width: 100%;
+    color: #d7dce4;
+}
+.tutorial-video-upload-info {
+    color: #aeb5c1;
+    font-size: 12px;
+    line-height: 1.45;
+}
+.tutorial-video-upload-selected {
+    color: #dce2eb;
+    font-size: 13px;
+    overflow-wrap: anywhere;
+}
+.tutorial-video-upload-warning {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(255,190,93,.075);
+    border: 1px solid rgba(255,190,93,.16);
+    color: #d7c39f;
+    font-size: 12px;
+    line-height: 1.45;
+}
+@media (max-width: 560px) {
+    .tutorial-video-source-tabs { grid-template-columns: 1fr; }
 }
 
 .tutorial-modal-overlay {
@@ -3218,9 +3285,19 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
 
     const videoModal = document.getElementById("tutorialVideoModal");
     const videoUrlInput = document.getElementById("tutorialVideoUrlInput");
+    const videoUploadInput = document.getElementById("tutorialVideoUploadInput");
+    const videoUploadSelected = document.getElementById("tutorialVideoUploadSelected");
     const videoError = document.getElementById("tutorialVideoError");
     const videoAddButton = document.getElementById("tutorialVideoAdd");
+    const videoSourceTabs = [...document.querySelectorAll("[data-video-source-mode]")];
+    const videoSourcePanels = [...document.querySelectorAll("[data-video-source-panel]")];
+    const VIDEO_UPLOAD_MAX_BYTES = 25 * 1024 * 1024;
+    const VIDEO_UPLOAD_DIR = "tutorial-videos";
+    const pendingVideoFiles = new Map();
+    const pendingVideoPreviewUrls = new Map();
     let videoTargetMenuId = null;
+    let videoInputMode = "youtube";
+    let selectedVideoFile = null;
 
     const deleteMenuModal = document.getElementById("tutorialDeleteMenuModal");
     const deleteMenuSelect = document.getElementById("tutorialDeleteMenuSelect");
@@ -3315,6 +3392,26 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
                     delete block.data;
                     delete block.alt;
                     delete block.title;
+                }
+                if (block.type === "video") {
+                    const uploaded = block.source === "upload" || String(block.src || "").startsWith("tutorial-videos/");
+                    if (uploaded) {
+                        block.source = "upload";
+                        block.src = String(block.src || "");
+                        block.name = String(block.name || block.src.split("/").pop() || "Vidéo importée");
+                        block.mime = String(block.mime || "video/mp4");
+                        block.size = Number(block.size || 0) || 0;
+                        block.pending = Boolean(block.pending && !block.src);
+                        delete block.url;
+                    } else {
+                        block.source = "youtube";
+                        block.url = String(block.url || "");
+                        delete block.src;
+                        delete block.name;
+                        delete block.mime;
+                        delete block.size;
+                        delete block.pending;
+                    }
                 }
             });
         });
@@ -3494,6 +3591,83 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
         return null;
     }
 
+    function formatBytes(value) {
+        const bytes = Number(value || 0);
+        if (!Number.isFinite(bytes) || bytes <= 0) return "0 octet";
+        const units = ["octets", "Ko", "Mo", "Go"];
+        let amount = bytes;
+        let unit = 0;
+        while (amount >= 1024 && unit < units.length - 1) {
+            amount /= 1024;
+            unit += 1;
+        }
+        return `${amount >= 10 || unit === 0 ? amount.toFixed(0) : amount.toFixed(1)} ${units[unit]}`;
+    }
+
+    function isSupportedUploadedVideo(file) {
+        if (!file) return false;
+        const type = String(file.type || "").toLowerCase();
+        const name = String(file.name || "").toLowerCase();
+        return type === "video/mp4" || type === "video/webm" || name.endsWith(".mp4") || name.endsWith(".webm");
+    }
+
+    function safeVideoFileName(name) {
+        const raw = String(name || "video.mp4");
+        const dot = raw.lastIndexOf(".");
+        let stem = dot > 0 ? raw.slice(0, dot) : raw;
+        let ext = dot > 0 ? raw.slice(dot).toLowerCase() : ".mp4";
+        if (![".mp4", ".webm"].includes(ext)) ext = ".mp4";
+        stem = stem.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^A-Za-z0-9_-]+/g, "-")
+            .replace(/^-+|-+$/g, "")
+            .slice(0, 64) || "video";
+        return stem + ext;
+    }
+
+    function videoApiUrl(path) {
+        const encoded = String(path || "").split("/").filter(Boolean).map(encodeURIComponent).join("/");
+        return `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${encoded}`;
+    }
+
+    function fileToBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+                const value = String(reader.result || "");
+                const comma = value.indexOf(",");
+                resolve(comma >= 0 ? value.slice(comma + 1) : value);
+            };
+            reader.onerror = () => reject(reader.error || new Error("Lecture du fichier impossible."));
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function getPendingVideoPreviewUrl(blockId) {
+        const file = pendingVideoFiles.get(blockId);
+        if (!file) return "";
+        if (!pendingVideoPreviewUrls.has(blockId)) {
+            pendingVideoPreviewUrls.set(blockId, URL.createObjectURL(file));
+        }
+        return pendingVideoPreviewUrls.get(blockId);
+    }
+
+    function releasePendingVideo(blockId) {
+        const url = pendingVideoPreviewUrls.get(blockId);
+        if (url) URL.revokeObjectURL(url);
+        pendingVideoPreviewUrls.delete(blockId);
+        pendingVideoFiles.delete(blockId);
+    }
+
+    function collectUploadedVideoPaths(data) {
+        const paths = new Set();
+        (data?.menus || []).forEach(menu => (menu.blocks || []).forEach(block => {
+            if (block?.type === "video" && block?.source === "upload" && String(block.src || "").startsWith(VIDEO_UPLOAD_DIR + "/")) {
+                paths.add(String(block.src));
+            }
+        }));
+        return paths;
+    }
+
     function slugifyTutorialTitle(value) {
         const base = String(value || "")
             .normalize("NFD")
@@ -3614,6 +3788,12 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
             return `<div class="tutorial-public-block tutorial-image-grid ${displaySizeClass}">${cells}</div>`;
         }
         if (block.type === "video") {
+            if (block.source === "upload") {
+                const src = String(block.src || "");
+                if (!src.startsWith(VIDEO_UPLOAD_DIR + "/")) return "";
+                const mime = String(block.mime || (src.toLowerCase().endsWith(".webm") ? "video/webm" : "video/mp4"));
+                return `<div class="tutorial-public-block tutorial-video-wrap"><video controls playsinline preload="metadata" loading="lazy" aria-label="Vidéo du tutoriel"><source src="${escapeHtml(src)}" type="${escapeHtml(mime)}">Ton navigateur ne peut pas lire cette vidéo.</video></div>`;
+            }
             const id = youtubeId(block.url);
             if (!id) return "";
             return `<div class="tutorial-public-block tutorial-video-wrap"><iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}" title="Vidéo YouTube" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
@@ -3727,7 +3907,13 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
             </div>`;
         }
         if (block.type === "video") {
-            return `<div class="tutorial-admin-block" data-block-id="${block.id}">${controls}<div class="tutorial-admin-video-preview">Vidéo YouTube : ${escapeHtml(block.url || "")}</div></div>`;
+            if (block.source === "upload") {
+                const pendingSrc = getPendingVideoPreviewUrl(block.id);
+                const src = pendingSrc || String(block.src || "");
+                const label = block.pending ? "Vidéo locale prête à être envoyée" : "Vidéo importée";
+                return `<div class="tutorial-admin-block" data-block-id="${block.id}">${controls}<div class="tutorial-admin-video-preview"><strong>${label}</strong><br>${escapeHtml(block.name || block.src || "Vidéo")} · ${escapeHtml(formatBytes(block.size || pendingVideoFiles.get(block.id)?.size || 0))}${src ? `<video controls playsinline preload="metadata" src="${escapeHtml(src)}"></video>` : ""}</div></div>`;
+            }
+            return `<div class="tutorial-admin-block" data-block-id="${block.id}">${controls}<div class="tutorial-admin-video-preview"><strong>Vidéo YouTube</strong><br>${escapeHtml(block.url || "")}</div></div>`;
         }
         return "";
     }
@@ -4287,7 +4473,9 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
             button.addEventListener("click", () => {
                 const menu = findMenu(button.dataset.menuId);
                 if (!menu) return;
-                menu.blocks = menu.blocks.filter(block => block.id !== button.dataset.blockId);
+                const blockId = button.dataset.blockId;
+                releasePendingVideo(blockId);
+                menu.blocks = menu.blocks.filter(block => block.id !== blockId);
                 renderAdmin();
                 markDirty();
             });
@@ -4636,27 +4824,80 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
         });
     }
 
+    function setVideoInputMode(mode) {
+        videoInputMode = mode === "upload" ? "upload" : "youtube";
+        videoSourceTabs.forEach(button => button.classList.toggle("active", button.dataset.videoSourceMode === videoInputMode));
+        videoSourcePanels.forEach(panel => { panel.hidden = panel.dataset.videoSourcePanel !== videoInputMode; });
+        videoError.textContent = "";
+        setTimeout(() => {
+            if (videoInputMode === "youtube") videoUrlInput.focus();
+            else videoUploadInput.focus();
+        }, 20);
+    }
+
+    function refreshSelectedVideoLabel() {
+        if (!selectedVideoFile) {
+            videoUploadSelected.textContent = "Aucun fichier sélectionné.";
+            return;
+        }
+        videoUploadSelected.textContent = `${selectedVideoFile.name} · ${formatBytes(selectedVideoFile.size)}`;
+    }
+
     function openVideoModal(menuId) {
         videoTargetMenuId = menuId;
         videoUrlInput.value = "";
+        videoUploadInput.value = "";
+        selectedVideoFile = null;
+        refreshSelectedVideoLabel();
         videoError.textContent = "";
         videoModal.hidden = false;
-        setTimeout(() => videoUrlInput.focus(), 20);
+        setVideoInputMode("youtube");
     }
     function closeVideoModal() {
         videoModal.hidden = true;
         videoTargetMenuId = null;
+        selectedVideoFile = null;
+        videoUploadInput.value = "";
         videoError.textContent = "";
     }
     function addVideoFromModal() {
-        const id = youtubeId(videoUrlInput.value);
-        if (!id) {
-            videoError.textContent = "Entre un lien YouTube valide.";
-            return;
-        }
         const menu = findMenu(videoTargetMenuId);
         if (!menu) return closeVideoModal();
-        menu.blocks.push({ id: uid("video"), type: "video", url: videoUrlInput.value.trim() });
+
+        if (videoInputMode === "youtube") {
+            const id = youtubeId(videoUrlInput.value);
+            if (!id) {
+                videoError.textContent = "Entre un lien YouTube valide.";
+                return;
+            }
+            menu.blocks.push({ id: uid("video"), type: "video", source: "youtube", url: videoUrlInput.value.trim() });
+        } else {
+            const file = selectedVideoFile;
+            if (!file) {
+                videoError.textContent = "Choisis une vidéo à importer.";
+                return;
+            }
+            if (!isSupportedUploadedVideo(file)) {
+                videoError.textContent = "Format non pris en charge. Utilise un fichier MP4 ou WebM.";
+                return;
+            }
+            if (file.size > VIDEO_UPLOAD_MAX_BYTES) {
+                videoError.textContent = `La vidéo dépasse la limite de ${formatBytes(VIDEO_UPLOAD_MAX_BYTES)}.`;
+                return;
+            }
+            const blockId = uid("video");
+            pendingVideoFiles.set(blockId, file);
+            menu.blocks.push({
+                id: blockId,
+                type: "video",
+                source: "upload",
+                src: "",
+                name: file.name,
+                mime: file.type || (file.name.toLowerCase().endsWith(".webm") ? "video/webm" : "video/mp4"),
+                size: file.size,
+                pending: true
+            });
+        }
         openMenuId = menu.id;
         closeVideoModal();
         renderAdmin();
@@ -4670,6 +4911,10 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
 
     function downloadTutorialBackup() {
         try {
+            if (pendingVideoFiles.size) {
+                setStatus("Enregistre d’abord les vidéos locales avant de télécharger une sauvegarde : le fichier JSON ne peut pas contenir les fichiers vidéo eux-mêmes.", "error");
+                return;
+            }
             const cleanData = normalizeData(deepClone(tutorialData));
             ensureUniqueMenuSlugs(cleanData.menus);
             const json = JSON.stringify(cleanData, null, 2);
@@ -4781,59 +5026,133 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
                 if (input) input.focus();
                 return false;
             }
+            for (const block of (menu.blocks || [])) {
+                if (block.type === "video" && block.source === "upload" && !String(block.src || "") && !pendingVideoFiles.has(block.id)) {
+                    openMenuId = menu.id;
+                    renderAdmin();
+                    setStatus("Impossible d'enregistrer : une vidéo locale n'est plus disponible. Supprime ce bloc puis importe à nouveau la vidéo.", "error");
+                    return false;
+                }
+            }
         }
         return true;
     }
 
     async function savePage() {
         if (!adminToken || !validateBeforeSave()) return;
-        setStatus("Enregistrement sur GitHub…", "");
+        setStatus("Préparation de l’enregistrement…", "");
         const saveButton = document.getElementById("tutorialSavePage");
         if (saveButton) saveButton.disabled = true;
-        try {
-            let sha = null;
-            try {
-                const current = await githubRequest(API_URL + "?ref=" + encodeURIComponent(REPO_BRANCH));
-                sha = current.sha;
-            } catch (error) {
-                if (!String(error.message).includes("GitHub 404")) throw error;
-            }
-            const cleanData = deepClone(tutorialData);
-            const nowIso = new Date().toISOString();
-            ensureUniqueMenuSlugs(cleanData.menus);
 
+        try {
             let previousData = { menus: [] };
             try {
                 previousData = JSON.parse(savedDataSnapshot || '{"menus":[]}');
             } catch (error) {
                 previousData = { menus: [] };
             }
-            const previousMenus = new Map((previousData.menus || []).map(menu => [menu.id, menu]));
 
+            const cleanData = deepClone(tutorialData);
+            const nowIso = new Date().toISOString();
+            ensureUniqueMenuSlugs(cleanData.menus);
+
+            const pendingEntries = [...pendingVideoFiles.entries()].filter(([blockId]) =>
+                cleanData.menus.some(menu => menu.blocks.some(block => block.id === blockId && block.type === "video" && block.source === "upload"))
+            );
+
+            const videoChanges = [];
+            let uploadIndex = 0;
+            for (const [blockId, file] of pendingEntries) {
+                uploadIndex += 1;
+                if (!isSupportedUploadedVideo(file)) throw new Error(`La vidéo « ${file.name} » n'est pas en MP4/WebM.`);
+                if (file.size > VIDEO_UPLOAD_MAX_BYTES) throw new Error(`La vidéo « ${file.name} » dépasse ${formatBytes(VIDEO_UPLOAD_MAX_BYTES)}.`);
+                const block = cleanData.menus.flatMap(menu => menu.blocks).find(item => item.id === blockId);
+                if (!block) continue;
+
+                const path = `${VIDEO_UPLOAD_DIR}/${blockId}-${safeVideoFileName(file.name)}`;
+                setStatus(`Préparation de la vidéo ${uploadIndex}/${pendingEntries.length}…`, "");
+                const content = await fileToBase64(file);
+                videoChanges.push({ blockId, path, file, content });
+                block.src = path;
+                block.name = file.name;
+                block.mime = file.type || (file.name.toLowerCase().endsWith(".webm") ? "video/webm" : "video/mp4");
+                block.size = file.size;
+                block.pending = false;
+            }
+
+            const previousMenus = new Map((previousData.menus || []).map(menu => [menu.id, menu]));
             cleanData.menus.forEach(menu => {
                 const previous = previousMenus.get(menu.id);
                 const changed = !previous || JSON.stringify(comparableMenu(menu)) !== JSON.stringify(comparableMenu(previous));
                 if (!menu.updatedAt || changed) menu.updatedAt = nowIso;
+                (menu.blocks || []).forEach(block => { if (block.type === "video") delete block.pending; });
+            });
+            cleanData.updatedAt = nowIso;
+
+            const oldVideoPaths = collectUploadedVideoPaths(previousData);
+            const newVideoPaths = collectUploadedVideoPaths(cleanData);
+            const removedVideoPaths = [...oldVideoPaths].filter(path => !newVideoPaths.has(path));
+
+            setStatus("Création d’une mise à jour GitHub unique…", "");
+            const refData = await githubRequest(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/git/ref/heads/${encodeURIComponent(REPO_BRANCH)}`);
+            const parentCommitSha = refData.object.sha;
+            const parentCommit = await githubRequest(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/git/commits/${parentCommitSha}`);
+
+            const dataBlob = await githubRequest(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/git/blobs`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ content: utf8ToBase64(JSON.stringify(cleanData, null, 2)), encoding: "base64" })
             });
 
-            cleanData.updatedAt = nowIso;
-            const payload = {
-                message: "Mise à jour de la page Tutoriels de jeu",
-                content: utf8ToBase64(JSON.stringify(cleanData, null, 2)),
-                branch: REPO_BRANCH
-            };
-            if (sha) payload.sha = sha;
-            await githubRequest(API_URL, {
-                method: "PUT",
+            const tree = [{ path: DATA_PATH, mode: "100644", type: "blob", sha: dataBlob.sha }];
+
+            let blobIndex = 0;
+            for (const change of videoChanges) {
+                blobIndex += 1;
+                setStatus(`Envoi de la vidéo ${blobIndex}/${videoChanges.length} vers GitHub…`, "");
+                const blob = await githubRequest(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/git/blobs`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ content: change.content, encoding: "base64" })
+                });
+                tree.push({ path: change.path, mode: "100644", type: "blob", sha: blob.sha });
+            }
+
+            removedVideoPaths.forEach(path => tree.push({ path, mode: "100644", type: "blob", sha: null }));
+
+            const newTree = await githubRequest(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/git/trees`, {
+                method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
+                body: JSON.stringify({ base_tree: parentCommit.tree.sha, tree })
             });
+
+            const commit = await githubRequest(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/git/commits`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    message: videoChanges.length || removedVideoPaths.length
+                        ? "Mise à jour Tutoriels de jeu et vidéos"
+                        : "Mise à jour de la page Tutoriels de jeu",
+                    tree: newTree.sha,
+                    parents: [parentCommitSha]
+                })
+            });
+
+            await githubRequest(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/git/refs/heads/${encodeURIComponent(REPO_BRANCH)}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ sha: commit.sha, force: false })
+            });
+
             tutorialData = cleanData;
+            videoChanges.forEach(change => releasePendingVideo(change.blockId));
             savedDataSnapshot = JSON.stringify(tutorialData);
-            setStatus("Modifications enregistrées. GitHub republiera automatiquement le site dans quelques instants.", "success");
+            renderAdmin();
+            setStatus("Modifications enregistrées en un seul commit. GitHub republiera automatiquement le site dans quelques instants.", "success");
         } catch (error) {
             console.error(error);
-            setStatus("Échec de l'enregistrement sur GitHub. Vérifie le token et sa permission Contents: Read and write.", "error");
+            const message = String(error?.message || error || "Erreur inconnue");
+            setStatus(`Échec de l'enregistrement : ${message}`, "error");
         } finally {
             if (saveButton) saveButton.disabled = false;
         }
@@ -4841,6 +5160,7 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
 
     function quitAdmin() {
         const doQuit = () => {
+            [...pendingVideoFiles.keys()].forEach(releasePendingVideo);
             adminMode = false;
             adminToken = null;
             adminToolbar.hidden = true;
@@ -4883,6 +5203,17 @@ TUTORIALS_SCRIPT = r'''<script src="admin-config.js"></script>
 
     videoAddButton.addEventListener("click", addVideoFromModal);
     videoUrlInput.addEventListener("keydown", event => { if (event.key === "Enter") addVideoFromModal(); });
+    videoSourceTabs.forEach(button => button.addEventListener("click", () => setVideoInputMode(button.dataset.videoSourceMode)));
+    videoUploadInput.addEventListener("change", () => {
+        selectedVideoFile = videoUploadInput.files && videoUploadInput.files[0] ? videoUploadInput.files[0] : null;
+        refreshSelectedVideoLabel();
+        videoError.textContent = "";
+        if (selectedVideoFile && !isSupportedUploadedVideo(selectedVideoFile)) {
+            videoError.textContent = "Format non pris en charge. Utilise un fichier MP4 ou WebM.";
+        } else if (selectedVideoFile && selectedVideoFile.size > VIDEO_UPLOAD_MAX_BYTES) {
+            videoError.textContent = `La vidéo dépasse la limite de ${formatBytes(VIDEO_UPLOAD_MAX_BYTES)}.`;
+        }
+    });
     document.querySelectorAll('[data-close-video]').forEach(button => button.addEventListener("click", closeVideoModal));
 
     document.addEventListener("click", event => {
@@ -5324,6 +5655,17 @@ def render_static_tutorial_blocks(menu, slug):
                 parts.append(f'<section class="guide-block guide-images guide-images-{layout} guide-size-{size}">' + "".join(cells) + '</section>')
             continue
         if block_type == "video":
+            source = str(block.get("source", "") or "")
+            src = str(block.get("src", "") or "").strip()
+            if source == "upload" and src.startswith("tutorial-videos/"):
+                mime = str(block.get("mime", "") or ("video/webm" if src.lower().endswith(".webm") else "video/mp4"))
+                safe_src = "../" + quote(src, safe="/-._~")
+                parts.append(
+                    '<section class="guide-block guide-video">'
+                    f'<video controls playsinline preload="metadata" loading="lazy"><source src="{html.escape(safe_src, quote=True)}" type="{html.escape(mime, quote=True)}">Votre navigateur ne peut pas lire cette vidéo.</video>'
+                    '</section>'
+                )
+                continue
             url = str(block.get("url", "") or "").strip()
             video_id = tutorial_video_id_from_url(url)
             if video_id:
@@ -5406,7 +5748,7 @@ a { color:#ffd493; }
 .guide-images-grid.guide-size-small { grid-template-columns:repeat(auto-fit,minmax(min(160px,100%),240px)); }
 .guide-figure figcaption { margin-top:8px; color:#cfd4dc; font-size:14px; }
 .guide-video { position:relative; width:100%; aspect-ratio:16/9; overflow:hidden; border-radius:15px; background:#000; }
-.guide-video iframe { position:absolute; inset:0; width:100%; height:100%; border:0; }
+.guide-video iframe,.guide-video video { position:absolute; inset:0; width:100%; height:100%; border:0; object-fit:contain; background:#000; }
 .guide-actions { display:flex; flex-wrap:wrap; justify-content:center; gap:10px; padding:0 38px 34px; }
 .guide-button { display:inline-block; padding:12px 17px; border-radius:11px; text-decoration:none; color:#1d160f; background:linear-gradient(135deg,#ffd493,#e8a34b); font-weight:800; }
 .guide-button.secondary { color:#eceff5; background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.12); }
@@ -6931,9 +7273,29 @@ Retrouve ici les tutoriels et guides de jeu publiés par Legodingo13.
 <div id="tutorialVideoModal" class="tutorial-modal-overlay" hidden>
     <div class="tutorial-modal" role="dialog" aria-modal="true" aria-labelledby="tutorialVideoTitle">
         <button type="button" class="tutorial-modal-close" data-close-video aria-label="Fermer">×</button>
-        <h3 id="tutorialVideoTitle">Ajouter une vidéo YouTube</h3>
-        <label for="tutorialVideoUrlInput">Lien YouTube :</label>
-        <input id="tutorialVideoUrlInput" type="url" placeholder="https://www.youtube.com/watch?v=...">
+        <h3 id="tutorialVideoTitle">Ajouter une vidéo</h3>
+        <p class="tutorial-modal-message">Choisis entre une vidéo YouTube ou un fichier vidéo hébergé directement sur le site.</p>
+
+        <div class="tutorial-video-source-tabs" role="tablist" aria-label="Source de la vidéo">
+            <button type="button" class="tutorial-video-source-tab active" data-video-source-mode="youtube">▶ Lien YouTube</button>
+            <button type="button" class="tutorial-video-source-tab" data-video-source-mode="upload">⬆ Importer une vidéo</button>
+        </div>
+
+        <div class="tutorial-video-source-panel" data-video-source-panel="youtube">
+            <label for="tutorialVideoUrlInput">Lien YouTube :</label>
+            <input id="tutorialVideoUrlInput" type="url" placeholder="https://www.youtube.com/watch?v=...">
+        </div>
+
+        <div class="tutorial-video-source-panel" data-video-source-panel="upload" hidden>
+            <div class="tutorial-video-upload-box">
+                <label for="tutorialVideoUploadInput"><strong>Fichier vidéo :</strong></label>
+                <input id="tutorialVideoUploadInput" type="file" accept="video/mp4,video/webm,.mp4,.webm">
+                <div id="tutorialVideoUploadSelected" class="tutorial-video-upload-selected">Aucun fichier sélectionné.</div>
+                <div class="tutorial-video-upload-info">Formats acceptés : MP4 ou WebM · Taille maximale : 25 Mio. Pour la meilleure compatibilité, privilégie MP4 (H.264 + AAC).</div>
+            </div>
+            <div class="tutorial-video-upload-warning">La vidéo sera stockée comme un fichier séparé dans le dépôt GitHub, puis publiée avec le site. Elle ne sera pas intégrée en base64 dans tutoriels-data.json.</div>
+        </div>
+
         <div id="tutorialVideoError" class="tutorial-modal-error"></div>
         <div class="tutorial-modal-actions">
             <button type="button" data-close-video>Annuler</button>
@@ -7660,6 +8022,12 @@ for asset in assets:
         shutil.copy2(asset, os.path.join("_site", asset))
     elif asset != "tableau.png":
         print(f"ATTENTION : {asset} est introuvable.")
+
+# Les vidéos importées depuis la gestion des tutoriels sont stockées séparément
+# afin de ne pas gonfler tutoriels-data.json. On les recopie telles quelles dans
+# le site publié.
+if os.path.isdir("tutorial-videos"):
+    shutil.copytree("tutorial-videos", os.path.join("_site", "tutorial-videos"), dirs_exist_ok=True)
 
 
 # Vérification Search Console par fichier HTML : si Google fournit un fichier du type
