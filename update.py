@@ -37,6 +37,7 @@ BANANA_FOE_URL = "https://foe-for-bananas.com/fr/"
 BANANA_DB_URL = "https://foe-buildings-database.streamlit.app/"
 FOE_TOOLS_URL = "https://foe.tools/fr/"
 UNOFFICIAL_WIKI_URL = "https://forgeofempires.wiki/"
+FOE_OFFICIAL_DISCORD_URL = "https://discord.com/invite/EFcGBJcvGz"
 
 # Extensions
 FOE_HAMMER_URL = "https://chromewebstore.google.com/detail/forge-hammer/kmicglnhmpaebfcoiojigbnepklclboa?hl=fr"
@@ -49,6 +50,7 @@ PIXELPULSE_URL = "https://www.youtube.com/@PixelVibes63"
 MOOINGCAT_URL = "https://www.youtube.com/@MooingCatFoE"
 GUIGEEKS_URL = "https://www.youtube.com/@GuigeekX"
 ZOUMA_URL = "https://www.youtube.com/@PassionFoeforgeofempire"
+LINNUN_URL = "https://www.youtube.com/@LinnunFoE"
 
 SITE_BASE = "https://legodingo13.github.io/site-internet-legodingo13/"
 
@@ -7223,6 +7225,15 @@ document.addEventListener("DOMContentLoaded", function () {{
                 <div class="tile-detail">Wiki francophone consacré à Forge of Empires.</div>
                 <div class="external-badge">SITE TIERS</div>
             </a>
+            <a class="tile" href="{FOE_OFFICIAL_DISCORD_URL}" target="_blank" rel="noopener noreferrer" aria-label="Discord officiel de Forge of Empires">
+                <svg class="tile-logo discord-official-logo" viewBox="0 0 64 64" role="img" aria-label="Discord" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="4" y="4" width="56" height="56" rx="15" fill="#5865F2"/>
+                    <path fill="#fff" d="M46.8 18.9a36.2 36.2 0 0 0-9-2.8l-1.1 2.2a33.3 33.3 0 0 0-9.4 0l-1.1-2.2a36.8 36.8 0 0 0-9 2.8C11.5 27.3 10 35.4 10.8 43.4a36 36 0 0 0 11.1 5.5l2.7-3.7a23.7 23.7 0 0 1-4.2-2c.4-.3.7-.6 1.1-.9a25.8 25.8 0 0 0 21 0c.4.3.7.6 1.1.9a27 27 0 0 1-4.2 2l2.7 3.7a36.2 36.2 0 0 0 11.1-5.5c1-9.3-1.7-17.3-6.4-24.5ZM25.2 39.1c-2.2 0-4-2-4-4.5s1.8-4.5 4-4.5 4 2 4 4.5-1.8 4.5-4 4.5Zm13.6 0c-2.2 0-4-2-4-4.5s1.8-4.5 4-4.5 4 2 4 4.5-1.8 4.5-4 4.5Z"/>
+                </svg>
+                <div class="tile-title">Discord officiel FOE</div>
+                <div class="tile-detail">Rejoindre le serveur Discord officiel de Forge of Empires.</div>
+                <div class="external-badge">SITE TIERS</div>
+            </a>
             <a class="tile" href="{FORGEDB_URL}" target="_blank" rel="noopener noreferrer">
                 <img src="forgedb.png" loading="lazy" decoding="async" class="tile-logo third-party-logo" alt="ForgeDB">
                 <div class="tile-title">ForgeDB</div>
@@ -7308,7 +7319,7 @@ document.addEventListener("DOMContentLoaded", function () {{
             <a class="tile" href="{SENSHI_URL}" target="_blank" rel="noopener noreferrer">
                 <img src="Youtube.png" loading="lazy" decoding="async" class="tile-logo youtube-logo" alt="YouTube Senshi">
                 <div class="tile-title">Senshi</div>
-                <div class="tile-detail">Chaîne YouTube autour de Forge of Empires.</div>
+                <div class="tile-detail">Chaîne YouTube française autour de Forge of Empires.</div>
                 <div class="external-badge">CHAÎNE TIERCE</div>
             </a>
             <a class="tile" href="{PIXELPULSE_URL}" target="_blank" rel="noopener noreferrer">
@@ -7326,13 +7337,19 @@ document.addEventListener("DOMContentLoaded", function () {{
             <a class="tile" href="{GUIGEEKS_URL}" target="_blank" rel="noopener noreferrer">
                 <img src="Youtube.png" loading="lazy" decoding="async" class="tile-logo youtube-logo" alt="YouTube Guigeeks">
                 <div class="tile-title">Guigeeks</div>
-                <div class="tile-detail">Chaîne YouTube autour de Forge of Empires.</div>
+                <div class="tile-detail">Chaîne YouTube française autour de Forge of Empires.</div>
                 <div class="external-badge">CHAÎNE TIERCE</div>
             </a>
             <a class="tile" href="{ZOUMA_URL}" target="_blank" rel="noopener noreferrer">
                 <img src="Youtube.png" loading="lazy" decoding="async" class="tile-logo youtube-logo" alt="YouTube Zouma">
                 <div class="tile-title">Zouma</div>
-                <div class="tile-detail">Chaîne YouTube autour de Forge of Empires.</div>
+                <div class="tile-detail">Chaîne YouTube française autour de Forge of Empires.</div>
+                <div class="external-badge">CHAÎNE TIERCE</div>
+            </a>
+            <a class="tile" href="{LINNUN_URL}" target="_blank" rel="noopener noreferrer">
+                <img src="Youtube.png" loading="lazy" decoding="async" class="tile-logo youtube-logo" alt="YouTube LinnunFoE">
+                <div class="tile-title">LinnunFoE</div>
+                <div class="tile-detail">Chaîne YouTube allemande de Linnun, le plus gros YouTubeur allemand consacré à Forge of Empires.</div>
                 <div class="external-badge">CHAÎNE TIERCE</div>
             </a>
         </div>
