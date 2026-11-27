@@ -670,6 +670,7 @@ h2 { margin: 10px 0 16px; }
 .tile:hover .tile-logo { transform:scale(1.07); }
 .youtube-logo { width:92px; height:58px; }
 .instagram-logo { width:92px; height:92px; }
+.discord-official-logo { width:96px; height:96px; }
 .foe-logo { width:90px; height:70px; }
 .guns-logo { width:92px; height:92px; }
 .server-logo-small { width:100px; height:auto; }
