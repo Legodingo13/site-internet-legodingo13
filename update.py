@@ -3224,7 +3224,8 @@ SCRIPT = r"""
     const number = counter.querySelector(".page-view-number");
     const site = counter.dataset.viewSite;
     const path = counter.dataset.viewPath;
-    const embeddedFallback = Number(counter.dataset.viewFallback);
+    const rawEmbeddedFallback = (counter.dataset.viewFallback || "").trim();
+    const embeddedFallback = rawEmbeddedFallback === "" ? null : Number(rawEmbeddedFallback);
 
     if (!site || !path || !number) return;
 
@@ -3235,7 +3236,9 @@ SCRIPT = r"""
 
     function readLocalCache() {
         try {
-            const value = Number(localStorage.getItem(cacheKey));
+            const raw = localStorage.getItem(cacheKey);
+            if (raw === null || raw.trim() === "") return null;
+            const value = Number(raw);
             return Number.isFinite(value) && value >= 0 ? value : null;
         } catch (_) {
             return null;
@@ -5735,7 +5738,7 @@ def shell(filename, active, title, description, body, robots="index, follow, max
     )
     view_fallback = get_pageview_fallback(view_path)
     view_fallback_attr = "" if view_fallback is None else str(int(view_fallback))
-    view_fallback_text = "—" if view_fallback is None else format_number(view_fallback)
+    view_fallback_text = "…" if view_fallback is None else format_number(view_fallback)
     json_ld_markup = ""
     if structured_data:
         payloads = structured_data if isinstance(structured_data, list) else [structured_data]
@@ -6675,8 +6678,11 @@ home_admin_markup = r"""
         }
 
         try {
-            const cached = Number(localStorage.getItem(cacheKey));
-            if (Number.isFinite(cached) && cached >= 0) return cached;
+            const rawCached = localStorage.getItem(cacheKey);
+            if (rawCached !== null && rawCached.trim() !== "") {
+                const cached = Number(rawCached);
+                if (Number.isFinite(cached) && cached >= 0) return cached;
+            }
         } catch (_) {}
 
         throw lastError || new Error("Compteur indisponible");
