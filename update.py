@@ -55,6 +55,10 @@ PAGEVIEWS_SITE = "legodingo13.github.io"
 # Clé historique conservée volontairement pour ne pas remettre les compteurs à zéro après le renommage du dépôt.
 PAGEVIEWS_BASE_PATH = "/serveur-discord-legodingo13"
 PAGEVIEWS_INSTALL_PATH = PAGEVIEWS_BASE_PATH + "/__shortcut_installations__"
+PAGEVIEWS_API_BASE = "https://page-views-api.ratneshc.com/api/v1"
+
+# Cache en mémoire pendant la génération : évite de relire plusieurs fois le même compteur.
+_PAGEVIEWS_BUILD_CACHE = {}
 
 # Google Search Console :
 # - méthode recommandée avec ce site GitHub Pages : propriété « Préfixe d’URL » ;
@@ -93,6 +97,56 @@ def format_number(value):
         return f"{int(value):,}".replace(",", " ")
     except (TypeError, ValueError):
         return str(value)
+
+
+def get_pageview_fallback(path):
+    """
+    Lit le compteur au moment de la génération du site, sans incrémenter les vues.
+
+    La valeur est intégrée directement dans le HTML comme valeur de secours. Ainsi,
+    si l'API Page Views est momentanément indisponible dans le navigateur d'un
+    visiteur, le pied de page continue d'afficher le dernier total obtenu lors du
+    dernier déploiement GitHub Actions.
+
+    La clé historique PAGEVIEWS_BASE_PATH reste volontairement inchangée pour
+    préserver tous les compteurs existants.
+    """
+    cache_key = str(path or "").strip()
+    if not cache_key:
+        return None
+    if cache_key in _PAGEVIEWS_BUILD_CACHE:
+        return _PAGEVIEWS_BUILD_CACHE[cache_key]
+
+    # Permet de désactiver ce petit accès réseau pendant un test local si nécessaire.
+    if str(os.environ.get("DISABLE_PAGEVIEWS_BUILD_FETCH", "")).strip().lower() in {"1", "true", "yes", "on"}:
+        _PAGEVIEWS_BUILD_CACHE[cache_key] = None
+        return None
+
+    query = (
+        "site=" + quote(PAGEVIEWS_SITE, safe="")
+        + "&path=" + quote(cache_key, safe="")
+    )
+    request = urllib.request.Request(
+        f"{PAGEVIEWS_API_BASE}/views?{query}",
+        headers={
+            "User-Agent": "Legodingo13-Site-Builder/1.0",
+            "Accept": "application/json",
+        },
+    )
+
+    try:
+        with urllib.request.urlopen(request, timeout=4) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+        value = int(payload.get("views"))
+        if value < 0:
+            raise ValueError("Compteur négatif")
+        _PAGEVIEWS_BUILD_CACHE[cache_key] = value
+        return value
+    except Exception as exc:
+        # La génération du site ne doit jamais échouer à cause du service de vues.
+        print(f"Page Views : impossible de lire {cache_key!r} pendant le build : {exc}")
+        _PAGEVIEWS_BUILD_CACHE[cache_key] = None
+        return None
 
 
 def read_previous_youtube_count():
@@ -3170,47 +3224,127 @@ SCRIPT = r"""
     const number = counter.querySelector(".page-view-number");
     const site = counter.dataset.viewSite;
     const path = counter.dataset.viewPath;
+    const embeddedFallback = Number(counter.dataset.viewFallback);
 
     if (!site || !path || !number) return;
 
     const base = "https://page-views-api.ratneshc.com/api/v1";
     const query = `site=${encodeURIComponent(site)}&path=${encodeURIComponent(path)}`;
+    const cacheKey = `legodingo13:pageviews:v2:${site}:${path}`;
+    const formatter = new Intl.NumberFormat("fr-FR");
 
-    async function updateViewCounter() {
+    function readLocalCache() {
         try {
-            /*
-               Le service déduplique automatiquement un même visiteur pendant
-               30 minutes pour une même page. On compte donc de vraies visites
-               plutôt que chaque simple rafraîchissement du navigateur.
-            */
-            await fetch(`${base}/track?${query}`, {
-                method: "GET",
-                cache: "no-store",
-                keepalive: true
-            });
-
-            const response = await fetch(`${base}/views?${query}`, {
-                method: "GET",
-                cache: "no-store"
-            });
-
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-            const data = await response.json();
-            const views = Number(data.views);
-
-            if (!Number.isFinite(views)) throw new Error("Compteur invalide");
-
-            number.textContent = new Intl.NumberFormat("fr-FR").format(views);
-            counter.title = `${number.textContent} vue${views > 1 ? "s" : ""} de cette page`;
-        } catch (error) {
-            console.warn("Compteur de vues indisponible :", error);
-            number.textContent = "—";
-            counter.title = "Compteur de vues temporairement indisponible";
+            const value = Number(localStorage.getItem(cacheKey));
+            return Number.isFinite(value) && value >= 0 ? value : null;
+        } catch (_) {
+            return null;
         }
     }
 
-    updateViewCounter();
+    function writeLocalCache(value) {
+        try {
+            localStorage.setItem(cacheKey, String(value));
+        } catch (_) {
+            // Le compteur continue de fonctionner même si le stockage local est bloqué.
+        }
+    }
+
+    function displayViews(value, source) {
+        const views = Number(value);
+        if (!Number.isFinite(views) || views < 0) return false;
+        number.textContent = formatter.format(views);
+        counter.dataset.viewSource = source || "network";
+        counter.title = `${number.textContent} vue${views > 1 ? "s" : ""} de cette page`;
+        return true;
+    }
+
+    const cached = readLocalCache();
+    const initialValues = [embeddedFallback, cached].filter(value => Number.isFinite(value) && value >= 0);
+    if (initialValues.length) {
+        // Les compteurs ne diminuent normalement jamais : on garde donc la valeur la plus récente/haute.
+        displayViews(Math.max(...initialValues), cached != null ? "cache" : "build");
+    } else {
+        number.textContent = "…";
+        counter.title = "Chargement du nombre de vues…";
+    }
+
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function fetchWithTimeout(url, timeoutMs) {
+        const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+        const timeout = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+        try {
+            return await fetch(url, {
+                method: "GET",
+                cache: "no-store",
+                keepalive: true,
+                signal: controller ? controller.signal : undefined
+            });
+        } finally {
+            if (timeout) clearTimeout(timeout);
+        }
+    }
+
+    async function trackVisit() {
+        /*
+           IMPORTANT : l'échec du suivi d'une visite ne bloque plus la lecture
+           du compteur. C'était le principal point fragile de l'ancienne version.
+        */
+        try {
+            const response = await fetchWithTimeout(`${base}/track?${query}`, 5000);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        } catch (error) {
+            console.warn("Suivi de visite indisponible, affichage du compteur maintenu :", error);
+        }
+    }
+
+    async function readViewsOnce() {
+        const response = await fetchWithTimeout(`${base}/views?${query}`, 6000);
+        if (!response.ok) {
+            const error = new Error(`HTTP ${response.status}`);
+            error.status = response.status;
+            throw error;
+        }
+        const data = await response.json();
+        const views = Number(data.views);
+        if (!Number.isFinite(views) || views < 0) throw new Error("Compteur invalide");
+        return views;
+    }
+
+    async function refreshViews() {
+        let lastError = null;
+        const delays = [0, 900, 2500];
+
+        for (const delay of delays) {
+            if (delay) await sleep(delay);
+            try {
+                const views = await readViewsOnce();
+                writeLocalCache(views);
+                displayViews(views, "network");
+                return;
+            } catch (error) {
+                lastError = error;
+                // Le service demande d'attendre 60 s après un 429 : inutile de le marteler immédiatement.
+                if (error && error.status === 429) break;
+            }
+        }
+
+        console.warn("Lecture du compteur temporairement indisponible :", lastError);
+        // On conserve volontairement la valeur de build/cache déjà affichée.
+        if (number.textContent === "…") {
+            number.textContent = "—";
+            counter.title = "Compteur de vues temporairement indisponible";
+        } else {
+            counter.title += " (dernière valeur connue)";
+        }
+    }
+
+    // Les deux opérations sont indépendantes : aucune panne de /track ne peut masquer /views.
+    trackVisit();
+    refreshViews();
 })();
 
 (function () {
@@ -5599,6 +5733,9 @@ def shell(filename, active, title, description, body, robots="index, follow, max
         if filename == "index.html"
         else PAGEVIEWS_BASE_PATH + "/" + filename
     )
+    view_fallback = get_pageview_fallback(view_path)
+    view_fallback_attr = "" if view_fallback is None else str(int(view_fallback))
+    view_fallback_text = "—" if view_fallback is None else format_number(view_fallback)
     json_ld_markup = ""
     if structured_data:
         payloads = structured_data if isinstance(structured_data, list) else [structured_data]
@@ -5681,13 +5818,14 @@ window.addEventListener("appinstalled", function () {{
         class="page-view-counter"
         data-view-site="{PAGEVIEWS_SITE}"
         data-view-path="{view_path}"
+        data-view-fallback="{view_fallback_attr}"
         aria-label="Nombre de vues de cette page"
         title="Nombre de vues de cette page"
     >
         <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="M12 5c-5.5 0-9.6 4.6-10.8 6.2a1.3 1.3 0 0 0 0 1.6C2.4 14.4 6.5 19 12 19s9.6-4.6 10.8-6.2a1.3 1.3 0 0 0 0-1.6C21.6 9.6 17.5 5 12 5Zm0 11a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm0-2.2a1.8 1.8 0 1 0 0-3.6 1.8 1.8 0 0 0 0 3.6Z"/>
         </svg>
-        <span class="page-view-number">—</span>
+        <span class="page-view-number">{view_fallback_text}</span>
     </div>
     <div class="footer-copy">
         Dernière mise à jour automatique : <strong>{updated}</strong><br>
@@ -6502,12 +6640,46 @@ home_admin_markup = r"""
         if (!site || !path) throw new Error("Compteur non configuré");
         const base = "https://page-views-api.ratneshc.com/api/v1";
         const query = `site=${encodeURIComponent(site)}&path=${encodeURIComponent(path)}`;
-        const response = await fetch(`${base}/views?${query}`, { method: "GET", cache: "no-store" });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
-        const views = Number(data.views);
-        if (!Number.isFinite(views)) throw new Error("Valeur de compteur invalide");
-        return views;
+        const cacheKey = `legodingo13:pageviews:v2:${site}:${path}`;
+        let lastError = null;
+
+        for (const delay of [0, 900, 2500]) {
+            if (delay) await new Promise(resolve => setTimeout(resolve, delay));
+            try {
+                const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+                const timeout = controller ? setTimeout(() => controller.abort(), 6000) : null;
+                let response;
+                try {
+                    response = await fetch(`${base}/views?${query}`, {
+                        method: "GET",
+                        cache: "no-store",
+                        signal: controller ? controller.signal : undefined
+                    });
+                } finally {
+                    if (timeout) clearTimeout(timeout);
+                }
+                if (!response.ok) {
+                    const error = new Error(`HTTP ${response.status}`);
+                    error.status = response.status;
+                    throw error;
+                }
+                const data = await response.json();
+                const views = Number(data.views);
+                if (!Number.isFinite(views) || views < 0) throw new Error("Valeur de compteur invalide");
+                try { localStorage.setItem(cacheKey, String(views)); } catch (_) {}
+                return views;
+            } catch (error) {
+                lastError = error;
+                if (error && error.status === 429) break;
+            }
+        }
+
+        try {
+            const cached = Number(localStorage.getItem(cacheKey));
+            if (Number.isFinite(cached) && cached >= 0) return cached;
+        } catch (_) {}
+
+        throw lastError || new Error("Compteur indisponible");
     }
 
     async function loadStats() {
