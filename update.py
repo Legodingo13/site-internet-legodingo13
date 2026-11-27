@@ -643,6 +643,127 @@ h2 { margin: 10px 0 16px; }
 .tile-detail { color:#c4c9d2; font-size:14px; line-height:1.45; }
 .tile-count { color:#ffd493; font-size:25px; font-weight:800; margin-bottom:7px; }
 
+
+/* =========================================================
+   ACCUEIL — MENUS DEROULANTS À FOND CONTINU
+   ========================================================= */
+
+.home-menu-accordion {
+    display: grid;
+    gap: 0;
+    width: 100%;
+    margin-top: 30px;
+    overflow: hidden;
+    border-top: 1px solid rgba(255,255,255,.08);
+    border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.home-menu-section {
+    border-top: 1px solid rgba(255,255,255,.04);
+}
+.home-menu-section:first-child {
+    border-top: 0;
+}
+.home-menu-trigger {
+    width: 100%;
+    min-height: 108px;
+    position: relative;
+    overflow: hidden;
+    border: 0;
+    padding: 24px 22px;
+    color: #fff;
+    text-align: center;
+    background: #17191d;
+}
+.home-menu-bg {
+    position: absolute;
+    inset: 0;
+    background-repeat: no-repeat;
+    transition: opacity 1.8s ease-in-out;
+}
+.home-menu-bg-a { opacity: 1; }
+.home-menu-bg-b { opacity: 0; }
+.home-menu-shade {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background:
+        linear-gradient(90deg, rgba(19,19,19,.78), rgba(56,40,28,.20), rgba(19,19,19,.78)),
+        linear-gradient(180deg, rgba(12,13,16,.22), rgba(12,13,16,.30));
+}
+.home-menu-section.is-open .home-menu-shade {
+    background:
+        linear-gradient(90deg, rgba(20,19,18,.73), rgba(97,68,43,.12), rgba(20,19,18,.73)),
+        linear-gradient(180deg, rgba(12,13,16,.18), rgba(12,13,16,.24));
+}
+.home-menu-title {
+    position: relative;
+    z-index: 2;
+    display: block;
+    font-size: 29px;
+    font-weight: 850;
+    line-height: 1.15;
+    text-shadow: 0 4px 16px rgba(0,0,0,.48);
+}
+.home-menu-title::before,
+.home-menu-title::after {
+    content: "";
+    display: inline-block;
+    width: 74px;
+    max-width: 10vw;
+    height: 1px;
+    margin: 0 16px 9px;
+    background: linear-gradient(90deg, transparent, #d9a35a);
+}
+.home-menu-title::after {
+    background: linear-gradient(90deg, #d9a35a, transparent);
+}
+.home-menu-panel[hidden] { display: none; }
+.home-menu-panel {
+    padding: 16px 2px 24px;
+}
+.home-menu-description {
+    margin: 0 0 18px;
+    padding: 13px 15px;
+    color: #d5dae0;
+    line-height: 1.5;
+    text-align: left;
+    background: linear-gradient(90deg, rgba(255,212,147,.05), rgba(255,255,255,.02));
+    border-left: 3px solid rgba(240,180,92,.55);
+    border-radius: 12px;
+}
+.home-menu-panel .grid {
+    margin-top: 0;
+}
+
+@media (max-width: 820px) {
+    .home-menu-title { font-size: 24px; }
+}
+
+@media (max-width: 600px) {
+    .home-menu-trigger {
+        min-height: 84px;
+        padding: 17px 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .home-menu-title {
+        width: 100%;
+        font-size: clamp(15px, 4.6vw, 19px);
+        white-space: nowrap;
+        text-align: center;
+        overflow: visible;
+    }
+    .home-menu-title::before,
+    .home-menu-title::after {
+        width: clamp(10px, 4vw, 24px);
+        margin: 0 6px 6px;
+    }
+    .home-menu-section.is-open .home-menu-trigger {
+        box-shadow: inset 0 -2px 0 rgba(217,163,90,.55);
+    }
+}
+
 .table-frame {
     width: 100%;
     overflow: auto;
@@ -6517,6 +6638,141 @@ home_admin_markup = (home_admin_markup
     .replace("__TUTORIALS_PATH__", PAGEVIEWS_BASE_PATH + "/tutoriels.html")
 )
 
+HOME_ACCORDION_SCRIPT = r"""
+<script>
+(function () {
+    const root = document.getElementById("homeMenuAccordion");
+    if (!root) return;
+
+    const sections = Array.from(root.querySelectorAll("[data-home-menu]"));
+    if (!sections.length) return;
+
+    const backgrounds = [
+        "home_menu_bg_01.png",
+        "home_menu_bg_02.png",
+        "home_menu_bg_03.png",
+        "home_menu_bg_04.png",
+        "home_menu_bg_05.png",
+        "home_menu_bg_06.png",
+        "home_menu_bg_07.png",
+        "home_menu_bg_08.png"
+    ];
+    const backgroundMeta = backgrounds.map(() => ({ width: 1235, height: 636 }));
+
+    // Préchargement pour que les transitions restent fluides.
+    backgrounds.forEach(src => {
+        const image = new Image();
+        image.src = src;
+    });
+
+    let currentIndex = 0;
+    let layerAVisible = true;
+    let transitionTimer = null;
+
+    function computeCoverCrop(imageWidth, imageHeight, boxWidth, boxHeight) {
+        const scale = Math.max(boxWidth / imageWidth, boxHeight / imageHeight);
+        const scaledWidth = imageWidth * scale;
+        const scaledHeight = imageHeight * scale;
+        return {
+            scaledWidth,
+            scaledHeight,
+            offsetX: (boxWidth - scaledWidth) / 2,
+            offsetY: (boxHeight - scaledHeight) / 2
+        };
+    }
+
+    // Important : on calcule d'abord le recadrage du FOND ENTIER sur la zone
+    // constituée des quatre bandeaux fermés, puis on en affiche une tranche par menu.
+    function getSliceLayout(backgroundIndex) {
+        const headers = sections.map(section => section.querySelector(".home-menu-trigger"));
+        const boxWidth = root.getBoundingClientRect().width;
+        const boxHeight = headers.reduce((total, header) => total + header.getBoundingClientRect().height, 0);
+        const meta = backgroundMeta[backgroundIndex];
+        const crop = computeCoverCrop(meta.width, meta.height, boxWidth, boxHeight);
+        let yCursor = 0;
+
+        return headers.map(header => {
+            const headerHeight = header.getBoundingClientRect().height;
+            const layout = {
+                size: `${crop.scaledWidth}px ${crop.scaledHeight}px`,
+                position: `${crop.offsetX}px ${crop.offsetY - yCursor}px`
+            };
+            yCursor += headerHeight;
+            return layout;
+        });
+    }
+
+    function applyBackground(layerClass, backgroundIndex) {
+        const layout = getSliceLayout(backgroundIndex);
+        sections.forEach((section, index) => {
+            const layer = section.querySelector(`.${layerClass}`);
+            layer.style.backgroundImage = `url("${backgrounds[backgroundIndex]}")`;
+            layer.style.backgroundSize = layout[index].size;
+            layer.style.backgroundPosition = layout[index].position;
+        });
+    }
+
+    function showBackground(index) {
+        const normalizedIndex = (index + backgrounds.length) % backgrounds.length;
+        const incomingClass = layerAVisible ? "home-menu-bg-b" : "home-menu-bg-a";
+        const outgoingClass = layerAVisible ? "home-menu-bg-a" : "home-menu-bg-b";
+
+        applyBackground(incomingClass, normalizedIndex);
+        requestAnimationFrame(() => {
+            sections.forEach(section => {
+                section.querySelector(`.${incomingClass}`).style.opacity = "1";
+                section.querySelector(`.${outgoingClass}`).style.opacity = "0";
+            });
+        });
+
+        layerAVisible = !layerAVisible;
+        currentIndex = normalizedIndex;
+    }
+
+    function scheduleBackgroundChange() {
+        clearInterval(transitionTimer);
+        transitionTimer = setInterval(() => showBackground(currentIndex + 1), 6500);
+    }
+
+    applyBackground("home-menu-bg-a", 0);
+    applyBackground("home-menu-bg-b", 1 % backgrounds.length);
+    scheduleBackgroundChange();
+
+    sections.forEach(section => {
+        const trigger = section.querySelector(".home-menu-trigger");
+        const panel = section.querySelector(".home-menu-panel");
+
+        trigger.addEventListener("click", () => {
+            const shouldOpen = !section.classList.contains("is-open");
+
+            sections.forEach(otherSection => {
+                otherSection.classList.remove("is-open");
+                otherSection.querySelector(".home-menu-trigger").setAttribute("aria-expanded", "false");
+                otherSection.querySelector(".home-menu-panel").hidden = true;
+            });
+
+            if (shouldOpen) {
+                section.classList.add("is-open");
+                trigger.setAttribute("aria-expanded", "true");
+                panel.hidden = false;
+            }
+        });
+    });
+
+    let resizeTimer = null;
+    window.addEventListener("resize", () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            const visibleClass = layerAVisible ? "home-menu-bg-a" : "home-menu-bg-b";
+            const hiddenClass = layerAVisible ? "home-menu-bg-b" : "home-menu-bg-a";
+            applyBackground(visibleClass, currentIndex);
+            applyBackground(hiddenClass, (currentIndex + 1) % backgrounds.length);
+        }, 80);
+    });
+})();
+</script>
+"""
+
 home_body = f"""
 <h1>Legodingo13</h1>
 <p class="lead">
@@ -6656,138 +6912,156 @@ document.addEventListener("DOMContentLoaded", function () {{
     <div class="stat"><span class="number">{youtube_subscribers}</span><span class="label">abonnés sur YouTube</span></div>
 </div>
 
-<section class="section-block">
-<h2 class="section-title">Liens Legodingo13</h2>
-<p class="section-subtitle">Mes pages, mon serveur et les accès directement liés à la communauté Legodingo13.</p>
+<div class="home-menu-accordion" id="homeMenuAccordion">
 
-<div class="grid">
-    <a class="tile" href="discord.html"><img src="logo.png" loading="lazy" decoding="async" class="tile-logo server-logo-small" alt="Discord Legodingo13"><div class="tile-title">Discord</div><div class="tile-detail">Le plus gros serveur communautaire francophone autour de Forge of Empires.</div></a>
-    <a class="tile" href="youtube.html"><img src="Youtube.png" loading="lazy" decoding="async" class="tile-logo youtube-logo" alt="YouTube"><div class="tile-title">YouTube</div><div class="tile-detail">Retrouver la chaîne YouTube de Legodingo13.</div></a>
-    <a class="tile" href="{FOE_URL}" target="_blank" rel="noopener noreferrer"><img src="foe_logo.png" loading="lazy" decoding="async" class="tile-logo foe-logo" alt="Forge of Empires"><div class="tile-title">Forge of Empires</div><div class="tile-detail">Accéder au site officiel francophone du jeu.</div></a>
-    <a class="tile" href="profil.html"><img src="profil_tableau.png" loading="lazy" decoding="async" class="tile-logo profile-tableau-logo" alt="Profil Legodingo13 - Tableau Excel des mondes FOE"><div class="tile-title">Profil Legodingo13</div><div class="tile-detail">Tableau Excel des mondes FOE</div></a>
-    <a class="tile" href="tutoriels.html"><img src="tutoriels_logo.png" loading="lazy" decoding="async" class="tile-logo tutorials-logo" alt="Tutoriels de jeu Legodingo13"><div class="tile-title">Tutoriels de jeu</div><div class="tile-detail">Consulter les tutoriels et guides de jeu.</div></a>
-    <a class="tile" href="{GUNS_URL}" target="_blank" rel="noopener noreferrer"><img src="guns.png" loading="lazy" decoding="async" class="tile-logo guns-logo" alt="guns.lol Legodingo13"><div class="tile-title">Guns</div><div class="tile-detail">Accéder à la page guns.lol de Legodingo13.</div></a>
-</div>
-</section>
-
-<section class="section-block">
-<h2 class="section-title">Sites tiers</h2>
-<p class="section-subtitle">Outils, bases de données et ressources externes consacrés à Forge of Empires.</p>
-
-<div class="grid">
-    <a class="tile" href="{FOE_WIKI_URL}" target="_blank" rel="noopener noreferrer">
-        <img src="foe_logo.png" loading="lazy" decoding="async" class="tile-logo foe-logo" alt="Wiki Forge of Empires">
-        <div class="tile-title">Wiki Forge of Empires</div>
-        <div class="tile-detail">Wiki francophone consacré à Forge of Empires.</div>
-        <div class="external-badge">SITE TIERS</div>
-    </a>
-
-    <a class="tile" href="{FORGEDB_URL}" target="_blank" rel="noopener noreferrer">
-        <img src="forgedb.png" loading="lazy" decoding="async" class="tile-logo third-party-logo" alt="ForgeDB">
-        <div class="tile-title">ForgeDB</div>
-        <div class="tile-detail">Base de données et statistiques autour de Forge of Empires.</div>
-        <div class="external-badge">SITE TIERS</div>
-    </a>
-
-    <a class="tile" href="{FOE_SCOREDB_URL}" target="_blank" rel="noopener noreferrer">
-        <img src="foe_scoredb.png" loading="lazy" decoding="async" class="tile-logo third-party-logo small" alt="FOE ScoreDB">
-        <div class="tile-title">FOE ScoreDB</div>
-        <div class="tile-detail">Base de données et classements Forge of Empires.</div>
-        <div class="external-badge">SITE TIERS</div>
-    </a>
-
-    <a class="tile" href="{FOE_DATA_URL}" target="_blank" rel="noopener noreferrer">
-        <img src="foe_data.png" loading="lazy" decoding="async" class="tile-logo third-party-logo" alt="FOE Data">
-        <div class="tile-title">FOE Data</div>
-        <div class="tile-detail">Base de données consacrée à Forge of Empires.</div>
-        <div class="external-badge">SITE TIERS</div>
-    </a>
-
-    <button class="tile banana-sites-trigger" id="bananaSitesTrigger" type="button" aria-haspopup="dialog" aria-controls="bananaSitesModal">
-        <img src="banana_db.png" loading="lazy" decoding="async" class="tile-logo third-party-logo" alt="Born To Be A Banana">
-        <div class="tile-title">Born To Be A Banana</div>
-        <div class="tile-detail">Accéder aux outils Born To Be A Banana pour Forge of Empires.</div>
-        <div class="external-badge">SITES TIERS</div>
+<section class="home-menu-section" data-home-menu>
+    <button class="home-menu-trigger" type="button" aria-expanded="false">
+        <span class="home-menu-bg home-menu-bg-a"></span>
+        <span class="home-menu-bg home-menu-bg-b"></span>
+        <span class="home-menu-shade"></span>
+        <span class="home-menu-title">Liens Legodingo13</span>
     </button>
-
-    <a class="tile" href="{FOE_TOOLS_URL}" target="_blank" rel="noopener noreferrer">
-        <img src="foe_tools.png" loading="lazy" decoding="async" class="tile-logo third-party-logo" alt="FOE Tools">
-        <div class="tile-title">FOE Tools</div>
-        <div class="tile-detail">Assistant pour calculer les places et investissements des Grands Monuments.</div>
-        <div class="external-badge">SITE TIERS</div>
-    </a>
-</div>
+    <div class="home-menu-panel" hidden>
+        <p class="home-menu-description">Mes pages, mon serveur et les accès directement liés à la communauté Legodingo13.</p>
+        <div class="grid">
+            <a class="tile" href="discord.html"><img src="logo.png" loading="lazy" decoding="async" class="tile-logo server-logo-small" alt="Discord Legodingo13"><div class="tile-title">Discord</div><div class="tile-detail">Le plus gros serveur communautaire francophone autour de Forge of Empires.</div></a>
+            <a class="tile" href="youtube.html"><img src="Youtube.png" loading="lazy" decoding="async" class="tile-logo youtube-logo" alt="YouTube"><div class="tile-title">YouTube</div><div class="tile-detail">Retrouver la chaîne YouTube de Legodingo13.</div></a>
+            <a class="tile" href="{FOE_URL}" target="_blank" rel="noopener noreferrer"><img src="foe_logo.png" loading="lazy" decoding="async" class="tile-logo foe-logo" alt="Forge of Empires"><div class="tile-title">Forge of Empires</div><div class="tile-detail">Accéder au site officiel francophone du jeu.</div></a>
+            <a class="tile" href="profil.html"><img src="profil_tableau.png" loading="lazy" decoding="async" class="tile-logo profile-tableau-logo" alt="Profil Legodingo13 - Tableau Excel des mondes FOE"><div class="tile-title">Profil Legodingo13</div><div class="tile-detail">Tableau Excel des mondes FOE</div></a>
+            <a class="tile" href="tutoriels.html"><img src="tutoriels_logo.png" loading="lazy" decoding="async" class="tile-logo tutorials-logo" alt="Tutoriels de jeu Legodingo13"><div class="tile-title">Tutoriels de jeu</div><div class="tile-detail">Consulter les tutoriels et guides de jeu.</div></a>
+            <a class="tile" href="{GUNS_URL}" target="_blank" rel="noopener noreferrer"><img src="guns.png" loading="lazy" decoding="async" class="tile-logo guns-logo" alt="guns.lol Legodingo13"><div class="tile-title">Guns</div><div class="tile-detail">Accéder à la page guns.lol de Legodingo13.</div></a>
+        </div>
+    </div>
 </section>
 
-<section class="section-block">
-<h2 class="section-title">Extensions du jeu</h2>
-<p class="section-subtitle">Extensions tierces utiles pour accompagner Forge of Empires dans le navigateur.</p>
-
-<div class="grid two">
-    <a class="tile" href="{FOE_HAMMER_URL}" target="_blank" rel="noopener noreferrer">
-        <img src="foe_hammer.png" loading="lazy" decoding="async" class="tile-logo third-party-logo" alt="FOE Hammer">
-        <div class="tile-title">FOE Hammer</div>
-        <div class="tile-detail">Extension Chrome pour Forge of Empires.</div>
-        <div class="external-badge">EXTENSION TIERCE</div>
-    </a>
-
-    <a class="tile" href="{FOE_HELPER_URL}" target="_blank" rel="noopener noreferrer">
-        <img src="foe_helper.png" loading="lazy" decoding="async" class="tile-logo third-party-logo" alt="FOE Helper">
-        <div class="tile-title">FOE Helper</div>
-        <div class="tile-detail">Extension et assistant communautaire pour Forge of Empires.</div>
-        <div class="external-badge">EXTENSION TIERCE</div>
-    </a>
-</div>
+<section class="home-menu-section" data-home-menu>
+    <button class="home-menu-trigger" type="button" aria-expanded="false">
+        <span class="home-menu-bg home-menu-bg-a"></span>
+        <span class="home-menu-bg home-menu-bg-b"></span>
+        <span class="home-menu-shade"></span>
+        <span class="home-menu-title">Sites tiers</span>
+    </button>
+    <div class="home-menu-panel" hidden>
+        <p class="home-menu-description">Outils, bases de données et ressources externes consacrés à Forge of Empires.</p>
+        <div class="grid">
+            <a class="tile" href="{FOE_WIKI_URL}" target="_blank" rel="noopener noreferrer">
+                <img src="foe_logo.png" loading="lazy" decoding="async" class="tile-logo foe-logo" alt="Wiki Forge of Empires">
+                <div class="tile-title">Wiki Forge of Empires</div>
+                <div class="tile-detail">Wiki francophone consacré à Forge of Empires.</div>
+                <div class="external-badge">SITE TIERS</div>
+            </a>
+            <a class="tile" href="{FORGEDB_URL}" target="_blank" rel="noopener noreferrer">
+                <img src="forgedb.png" loading="lazy" decoding="async" class="tile-logo third-party-logo" alt="ForgeDB">
+                <div class="tile-title">ForgeDB</div>
+                <div class="tile-detail">Base de données et statistiques autour de Forge of Empires.</div>
+                <div class="external-badge">SITE TIERS</div>
+            </a>
+            <a class="tile" href="{FOE_SCOREDB_URL}" target="_blank" rel="noopener noreferrer">
+                <img src="foe_scoredb.png" loading="lazy" decoding="async" class="tile-logo third-party-logo small" alt="FOE ScoreDB">
+                <div class="tile-title">FOE ScoreDB</div>
+                <div class="tile-detail">Base de données et classements Forge of Empires.</div>
+                <div class="external-badge">SITE TIERS</div>
+            </a>
+            <a class="tile" href="{FOE_DATA_URL}" target="_blank" rel="noopener noreferrer">
+                <img src="foe_data.png" loading="lazy" decoding="async" class="tile-logo third-party-logo" alt="FOE Data">
+                <div class="tile-title">FOE Data</div>
+                <div class="tile-detail">Base de données consacrée à Forge of Empires.</div>
+                <div class="external-badge">SITE TIERS</div>
+            </a>
+            <button class="tile banana-sites-trigger" id="bananaSitesTrigger" type="button" aria-haspopup="dialog" aria-controls="bananaSitesModal">
+                <img src="banana_db.png" loading="lazy" decoding="async" class="tile-logo third-party-logo" alt="Born To Be A Banana">
+                <div class="tile-title">Born To Be A Banana</div>
+                <div class="tile-detail">Accéder aux outils Born To Be A Banana pour Forge of Empires.</div>
+                <div class="external-badge">SITES TIERS</div>
+            </button>
+            <a class="tile" href="{FOE_TOOLS_URL}" target="_blank" rel="noopener noreferrer">
+                <img src="foe_tools.png" loading="lazy" decoding="async" class="tile-logo third-party-logo" alt="FOE Tools">
+                <div class="tile-title">FOE Tools</div>
+                <div class="tile-detail">Assistant pour calculer les places et investissements des Grands Monuments.</div>
+                <div class="external-badge">SITE TIERS</div>
+            </a>
+        </div>
+    </div>
 </section>
 
-<section class="section-block">
-<h2 class="section-title">Chaînes YouTube tierces</h2>
-<p class="section-subtitle">Quelques chaînes YouTube consacrées à Forge of Empires.</p>
-
-<div class="grid">
-    <a class="tile" href="{UBERNERD14_URL}" target="_blank" rel="noopener noreferrer">
-        <img src="ubernerd14.png" loading="lazy" decoding="async" class="tile-logo third-party-logo" alt="UBERnerd14">
-        <div class="tile-title">UBERnerd14</div>
-        <div class="tile-detail">Le plus gros YouTuber Forge of Empires.</div>
-        <div class="external-badge">CHAÎNE TIERCE</div>
-    </a>
-
-    <a class="tile" href="{SENSHI_URL}" target="_blank" rel="noopener noreferrer">
-        <img src="Youtube.png" loading="lazy" decoding="async" class="tile-logo youtube-logo" alt="YouTube Senshi">
-        <div class="tile-title">Senshi</div>
-        <div class="tile-detail">Chaîne YouTube autour de Forge of Empires.</div>
-        <div class="external-badge">CHAÎNE TIERCE</div>
-    </a>
-
-    <a class="tile" href="{PIXELPULSE_URL}" target="_blank" rel="noopener noreferrer">
-        <img src="Youtube.png" loading="lazy" decoding="async" class="tile-logo youtube-logo" alt="YouTube PixelPulse">
-        <div class="tile-title">PixelPulse</div>
-        <div class="tile-detail">Chaîne YouTube autour de Forge of Empires.</div>
-        <div class="external-badge">CHAÎNE TIERCE</div>
-    </a>
-
-    <a class="tile" href="{MOOINGCAT_URL}" target="_blank" rel="noopener noreferrer">
-        <img src="Youtube.png" loading="lazy" decoding="async" class="tile-logo youtube-logo" alt="YouTube MooingCatFOE">
-        <div class="tile-title">MooingCatFOE</div>
-        <div class="tile-detail">Chaîne YouTube autour de Forge of Empires.</div>
-        <div class="external-badge">CHAÎNE TIERCE</div>
-    </a>
-
-    <a class="tile" href="{GUIGEEKS_URL}" target="_blank" rel="noopener noreferrer">
-        <img src="Youtube.png" loading="lazy" decoding="async" class="tile-logo youtube-logo" alt="YouTube Guigeeks">
-        <div class="tile-title">Guigeeks</div>
-        <div class="tile-detail">Chaîne YouTube autour de Forge of Empires.</div>
-        <div class="external-badge">CHAÎNE TIERCE</div>
-    </a>
-
-    <a class="tile" href="{ZOUMA_URL}" target="_blank" rel="noopener noreferrer">
-        <img src="Youtube.png" loading="lazy" decoding="async" class="tile-logo youtube-logo" alt="YouTube Zouma">
-        <div class="tile-title">Zouma</div>
-        <div class="tile-detail">Chaîne YouTube autour de Forge of Empires.</div>
-        <div class="external-badge">CHAÎNE TIERCE</div>
-    </a>
-</div>
+<section class="home-menu-section" data-home-menu>
+    <button class="home-menu-trigger" type="button" aria-expanded="false">
+        <span class="home-menu-bg home-menu-bg-a"></span>
+        <span class="home-menu-bg home-menu-bg-b"></span>
+        <span class="home-menu-shade"></span>
+        <span class="home-menu-title">Extensions du jeu</span>
+    </button>
+    <div class="home-menu-panel" hidden>
+        <p class="home-menu-description">Extensions tierces utiles pour accompagner Forge of Empires dans le navigateur.</p>
+        <div class="grid two">
+            <a class="tile" href="{FOE_HAMMER_URL}" target="_blank" rel="noopener noreferrer">
+                <img src="foe_hammer.png" loading="lazy" decoding="async" class="tile-logo third-party-logo" alt="FOE Hammer">
+                <div class="tile-title">FOE Hammer</div>
+                <div class="tile-detail">Extension Chrome pour Forge of Empires.</div>
+                <div class="external-badge">EXTENSION TIERCE</div>
+            </a>
+            <a class="tile" href="{FOE_HELPER_URL}" target="_blank" rel="noopener noreferrer">
+                <img src="foe_helper.png" loading="lazy" decoding="async" class="tile-logo third-party-logo" alt="FOE Helper">
+                <div class="tile-title">FOE Helper</div>
+                <div class="tile-detail">Extension et assistant communautaire pour Forge of Empires.</div>
+                <div class="external-badge">EXTENSION TIERCE</div>
+            </a>
+        </div>
+    </div>
 </section>
+
+<section class="home-menu-section" data-home-menu>
+    <button class="home-menu-trigger" type="button" aria-expanded="false">
+        <span class="home-menu-bg home-menu-bg-a"></span>
+        <span class="home-menu-bg home-menu-bg-b"></span>
+        <span class="home-menu-shade"></span>
+        <span class="home-menu-title">Chaînes YouTube tierces</span>
+    </button>
+    <div class="home-menu-panel" hidden>
+        <p class="home-menu-description">Quelques chaînes YouTube consacrées à Forge of Empires.</p>
+        <div class="grid">
+            <a class="tile" href="{UBERNERD14_URL}" target="_blank" rel="noopener noreferrer">
+                <img src="ubernerd14.png" loading="lazy" decoding="async" class="tile-logo third-party-logo" alt="UBERnerd14">
+                <div class="tile-title">UBERnerd14</div>
+                <div class="tile-detail">Le plus gros YouTuber Forge of Empires.</div>
+                <div class="external-badge">CHAÎNE TIERCE</div>
+            </a>
+            <a class="tile" href="{SENSHI_URL}" target="_blank" rel="noopener noreferrer">
+                <img src="Youtube.png" loading="lazy" decoding="async" class="tile-logo youtube-logo" alt="YouTube Senshi">
+                <div class="tile-title">Senshi</div>
+                <div class="tile-detail">Chaîne YouTube autour de Forge of Empires.</div>
+                <div class="external-badge">CHAÎNE TIERCE</div>
+            </a>
+            <a class="tile" href="{PIXELPULSE_URL}" target="_blank" rel="noopener noreferrer">
+                <img src="Youtube.png" loading="lazy" decoding="async" class="tile-logo youtube-logo" alt="YouTube PixelPulse">
+                <div class="tile-title">PixelPulse</div>
+                <div class="tile-detail">Chaîne YouTube autour de Forge of Empires.</div>
+                <div class="external-badge">CHAÎNE TIERCE</div>
+            </a>
+            <a class="tile" href="{MOOINGCAT_URL}" target="_blank" rel="noopener noreferrer">
+                <img src="Youtube.png" loading="lazy" decoding="async" class="tile-logo youtube-logo" alt="YouTube MooingCatFOE">
+                <div class="tile-title">MooingCatFOE</div>
+                <div class="tile-detail">Chaîne YouTube autour de Forge of Empires.</div>
+                <div class="external-badge">CHAÎNE TIERCE</div>
+            </a>
+            <a class="tile" href="{GUIGEEKS_URL}" target="_blank" rel="noopener noreferrer">
+                <img src="Youtube.png" loading="lazy" decoding="async" class="tile-logo youtube-logo" alt="YouTube Guigeeks">
+                <div class="tile-title">Guigeeks</div>
+                <div class="tile-detail">Chaîne YouTube autour de Forge of Empires.</div>
+                <div class="external-badge">CHAÎNE TIERCE</div>
+            </a>
+            <a class="tile" href="{ZOUMA_URL}" target="_blank" rel="noopener noreferrer">
+                <img src="Youtube.png" loading="lazy" decoding="async" class="tile-logo youtube-logo" alt="YouTube Zouma">
+                <div class="tile-title">Zouma</div>
+                <div class="tile-detail">Chaîne YouTube autour de Forge of Empires.</div>
+                <div class="external-badge">CHAÎNE TIERCE</div>
+            </a>
+        </div>
+    </div>
+</section>
+
+</div>
+{HOME_ACCORDION_SCRIPT}
 {home_admin_markup}
 """
 shell(
@@ -8189,6 +8463,16 @@ with open("_site/.nojekyll", "w", encoding="utf-8") as f:
 
 assets = [
     "fond.png",
+
+    # Fonds animés des menus déroulants de la page d'accueil
+    "home_menu_bg_01.png",
+    "home_menu_bg_02.png",
+    "home_menu_bg_03.png",
+    "home_menu_bg_04.png",
+    "home_menu_bg_05.png",
+    "home_menu_bg_06.png",
+    "home_menu_bg_07.png",
+    "home_menu_bg_08.png",
     "logo.png",
     "onglet_logo.png",
     "onglet_logo_optimise.png",
