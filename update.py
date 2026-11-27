@@ -26,6 +26,7 @@ SOCIALCOUNTS_URL = (
 )
 FOE_URL = "https://fr0.forgeofempires.com/page/"
 GUNS_URL = "https://guns.lol/legodingo13"
+INSTAGRAM_URL = "https://www.instagram.com/legodingo13/"
 
 # Sites tiers Forge of Empires
 FOE_WIKI_URL = "https://fr.wiki.forgeofempires.com/index.php?title=Accueil"
@@ -35,6 +36,7 @@ FOE_DATA_URL = "https://foe-data.ovh/"
 BANANA_FOE_URL = "https://foe-for-bananas.com/fr/"
 BANANA_DB_URL = "https://foe-buildings-database.streamlit.app/"
 FOE_TOOLS_URL = "https://foe.tools/fr/"
+UNOFFICIAL_WIKI_URL = "https://forgeofempires.wiki/"
 
 # Extensions
 FOE_HAMMER_URL = "https://chromewebstore.google.com/detail/forge-hammer/kmicglnhmpaebfcoiojigbnepklclboa?hl=fr"
@@ -665,6 +667,7 @@ h2 { margin: 10px 0 16px; }
 .tile-logo { display:block; object-fit:contain; margin:0 auto 12px; filter:drop-shadow(0 5px 10px rgba(0,0,0,.35)); transition:.2s; }
 .tile:hover .tile-logo { transform:scale(1.07); }
 .youtube-logo { width:92px; height:58px; }
+.instagram-logo { width:92px; height:92px; }
 .foe-logo { width:90px; height:70px; }
 .guns-logo { width:92px; height:92px; }
 .server-logo-small { width:100px; height:auto; }
@@ -7176,6 +7179,26 @@ document.addEventListener("DOMContentLoaded", function () {{
         <div class="grid">
             <a class="tile" href="discord.html"><img src="logo.png" loading="lazy" decoding="async" class="tile-logo server-logo-small" alt="Discord Legodingo13"><div class="tile-title">Discord</div><div class="tile-detail">Le plus gros serveur communautaire francophone autour de Forge of Empires.</div></a>
             <a class="tile" href="youtube.html"><img src="Youtube.png" loading="lazy" decoding="async" class="tile-logo youtube-logo" alt="YouTube"><div class="tile-title">YouTube</div><div class="tile-detail">Retrouver la chaîne YouTube de Legodingo13.</div></a>
+            <a class="tile" href="{INSTAGRAM_URL}" target="_blank" rel="noopener noreferrer" aria-label="Instagram Legodingo13">
+                <svg class="tile-logo instagram-logo" viewBox="0 0 64 64" role="img" aria-label="Instagram" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="instagramGradient" x1="8" y1="58" x2="56" y2="6" gradientUnits="userSpaceOnUse">
+                            <stop offset="0" stop-color="#ffdc80"/>
+                            <stop offset="0.28" stop-color="#fcaf45"/>
+                            <stop offset="0.5" stop-color="#f77737"/>
+                            <stop offset="0.7" stop-color="#e1306c"/>
+                            <stop offset="0.86" stop-color="#c13584"/>
+                            <stop offset="1" stop-color="#833ab4"/>
+                        </linearGradient>
+                    </defs>
+                    <rect x="4" y="4" width="56" height="56" rx="15" fill="url(#instagramGradient)"/>
+                    <rect x="16" y="16" width="32" height="32" rx="10" fill="none" stroke="#fff" stroke-width="4"/>
+                    <circle cx="32" cy="32" r="8" fill="none" stroke="#fff" stroke-width="4"/>
+                    <circle cx="43.5" cy="20.5" r="2.7" fill="#fff"/>
+                </svg>
+                <div class="tile-title">Instagram</div>
+                <div class="tile-detail">Retrouver le compte Instagram de Legodingo13.</div>
+            </a>
             <a class="tile" href="{FOE_URL}" target="_blank" rel="noopener noreferrer"><img src="foe_logo.png" loading="lazy" decoding="async" class="tile-logo foe-logo" alt="Forge of Empires"><div class="tile-title">Forge of Empires</div><div class="tile-detail">Accéder au site officiel francophone du jeu.</div></a>
             <a class="tile" href="profil.html"><img src="profil_tableau.png" loading="lazy" decoding="async" class="tile-logo profile-tableau-logo" alt="Profil Legodingo13 - Tableau Excel des mondes FOE"><div class="tile-title">Profil Legodingo13</div><div class="tile-detail">Tableau Excel des mondes FOE</div></a>
             <a class="tile" href="tutoriels.html"><img src="tutoriels_logo.png" loading="lazy" decoding="async" class="tile-logo tutorials-logo" alt="Tutoriels de jeu Legodingo13"><div class="tile-title">Tutoriels de jeu</div><div class="tile-detail">Consulter les tutoriels et guides de jeu.</div></a>
@@ -7228,6 +7251,12 @@ document.addEventListener("DOMContentLoaded", function () {{
                 <img src="foe_tools.png" loading="lazy" decoding="async" class="tile-logo third-party-logo" alt="FOE Tools">
                 <div class="tile-title">FOE Tools</div>
                 <div class="tile-detail">Assistant pour calculer les places et investissements des Grands Monuments.</div>
+                <div class="external-badge">SITE TIERS</div>
+            </a>
+            <a class="tile" href="{UNOFFICIAL_WIKI_URL}" target="_blank" rel="noopener noreferrer">
+                <img src="foe_unofficial_wiki.png" loading="lazy" decoding="async" class="tile-logo third-party-logo wide" alt="Forge of Empires Unofficial Wiki">
+                <div class="tile-title">Wiki Unofficial</div>
+                <div class="tile-detail">Accéder au wiki communautaire non officiel de Forge of Empires.</div>
                 <div class="external-badge">SITE TIERS</div>
             </a>
         </div>
@@ -8746,6 +8775,7 @@ assets = [
     "banana_db.png",
     "foe_for_bananas_logo.png",
     "foe_tools.png",
+    "foe_unofficial_wiki.png",
 
     # Logos des extensions
     "foe_hammer.png",
