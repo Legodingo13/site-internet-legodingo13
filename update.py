@@ -57,6 +57,15 @@ PAGEVIEWS_BASE_PATH = "/serveur-discord-legodingo13"
 PAGEVIEWS_INSTALL_PATH = PAGEVIEWS_BASE_PATH + "/__shortcut_installations__"
 PAGEVIEWS_API_BASE = "https://page-views-api.ratneshc.com/api/v1"
 
+# Valeurs minimales connues et confirmées.
+# Elles servent uniquement de filet de sécurité commun entre appareils :
+# le compteur réseau peut toujours les dépasser, mais le site ne redescend
+# jamais artificiellement en dessous de ces valeurs à cause d'un cache local
+# ancien ou d'une réponse temporaire invalide.
+PAGEVIEWS_KNOWN_MINIMUMS = {
+    PAGEVIEWS_BASE_PATH + "/": 828,
+}
+
 # Cache en mémoire pendant la génération : évite de relire plusieurs fois le même compteur.
 _PAGEVIEWS_BUILD_CACHE = {}
 
@@ -140,11 +149,19 @@ def get_pageview_fallback(path):
         value = int(payload.get("views"))
         if value < 0:
             raise ValueError("Compteur négatif")
+        minimum = PAGEVIEWS_KNOWN_MINIMUMS.get(cache_key)
+        if minimum is not None:
+            value = max(value, int(minimum))
         _PAGEVIEWS_BUILD_CACHE[cache_key] = value
         return value
     except Exception as exc:
         # La génération du site ne doit jamais échouer à cause du service de vues.
         print(f"Page Views : impossible de lire {cache_key!r} pendant le build : {exc}")
+        minimum = PAGEVIEWS_KNOWN_MINIMUMS.get(cache_key)
+        if minimum is not None:
+            minimum = int(minimum)
+            _PAGEVIEWS_BUILD_CACHE[cache_key] = minimum
+            return minimum
         _PAGEVIEWS_BUILD_CACHE[cache_key] = None
         return None
 
@@ -3231,23 +3248,41 @@ SCRIPT = r"""
 
     const base = "https://page-views-api.ratneshc.com/api/v1";
     const query = `site=${encodeURIComponent(site)}&path=${encodeURIComponent(path)}`;
-    const cacheKey = `legodingo13:pageviews:v2:${site}:${path}`;
+    const cacheKey = `legodingo13:pageviews:v3:${site}:${path}`;
+    const legacyCacheKey = `legodingo13:pageviews:v2:${site}:${path}`;
     const formatter = new Intl.NumberFormat("fr-FR");
+
+    function parsePositiveCounter(raw) {
+        if (raw === null || raw === undefined) return null;
+        const clean = String(raw).trim();
+        if (!clean) return null;
+        const value = Number(clean);
+        return Number.isFinite(value) && value > 0 ? value : null;
+    }
 
     function readLocalCache() {
         try {
-            const raw = localStorage.getItem(cacheKey);
-            if (raw === null || raw.trim() === "") return null;
-            const value = Number(raw);
-            return Number.isFinite(value) && value >= 0 ? value : null;
+            const current = parsePositiveCounter(localStorage.getItem(cacheKey));
+            if (current !== null) return current;
+
+            // Migration unique de l'ancien cache : seuls les nombres strictement
+            // positifs sont repris. Les anciens faux 0 sont donc ignorés.
+            const legacy = parsePositiveCounter(localStorage.getItem(legacyCacheKey));
+            if (legacy !== null) {
+                localStorage.setItem(cacheKey, String(legacy));
+                return legacy;
+            }
+            return null;
         } catch (_) {
             return null;
         }
     }
 
     function writeLocalCache(value) {
+        const parsed = Number(value);
+        if (!Number.isFinite(parsed) || parsed <= 0) return;
         try {
-            localStorage.setItem(cacheKey, String(value));
+            localStorage.setItem(cacheKey, String(parsed));
         } catch (_) {
             // Le compteur continue de fonctionner même si le stockage local est bloqué.
         }
@@ -3263,10 +3298,12 @@ SCRIPT = r"""
     }
 
     const cached = readLocalCache();
-    const initialValues = [embeddedFallback, cached].filter(value => Number.isFinite(value) && value >= 0);
-    if (initialValues.length) {
-        // Les compteurs ne diminuent normalement jamais : on garde donc la valeur la plus récente/haute.
-        displayViews(Math.max(...initialValues), cached != null ? "cache" : "build");
+    const initialValues = [embeddedFallback, cached].filter(value => Number.isFinite(value) && value > 0);
+    const baseline = initialValues.length ? Math.max(...initialValues) : null;
+    if (baseline !== null) {
+        // Un compteur de pages ne doit jamais reculer. On conserve donc le meilleur
+        // minimum commun/build/cache en attendant la lecture réseau.
+        displayViews(baseline, embeddedFallback === baseline ? "build" : "cache");
     } else {
         number.textContent = "…";
         counter.title = "Chargement du nombre de vues…";
@@ -3325,8 +3362,11 @@ SCRIPT = r"""
             if (delay) await sleep(delay);
             try {
                 const views = await readViewsOnce();
-                writeLocalCache(views);
-                displayViews(views, "network");
+                // Le réseau reste la source prioritaire, mais on refuse toute régression
+                // sous une valeur positive déjà connue (ex. ancien faux 0 / réponse transitoire).
+                const safeViews = baseline !== null ? Math.max(views, baseline) : views;
+                if (safeViews > 0) writeLocalCache(safeViews);
+                displayViews(safeViews, "network");
                 return;
             } catch (error) {
                 lastError = error;
@@ -6643,7 +6683,9 @@ home_admin_markup = r"""
         if (!site || !path) throw new Error("Compteur non configuré");
         const base = "https://page-views-api.ratneshc.com/api/v1";
         const query = `site=${encodeURIComponent(site)}&path=${encodeURIComponent(path)}`;
-        const cacheKey = `legodingo13:pageviews:v2:${site}:${path}`;
+        const cacheKey = `legodingo13:pageviews:v3:${site}:${path}`;
+        const legacyCacheKey = `legodingo13:pageviews:v2:${site}:${path}`;
+        const isInstallCounter = path === statsModal.dataset.installPath;
         let lastError = null;
 
         for (const delay of [0, 900, 2500]) {
@@ -6669,8 +6711,28 @@ home_admin_markup = r"""
                 const data = await response.json();
                 const views = Number(data.views);
                 if (!Number.isFinite(views) || views < 0) throw new Error("Valeur de compteur invalide");
-                try { localStorage.setItem(cacheKey, String(views)); } catch (_) {}
-                return views;
+                // Pour les pages, un ancien minimum positif en cache ne doit jamais
+                // être écrasé par un 0 transitoire. Le compteur d'installation, lui,
+                // peut légitimement être à 0.
+                let known = null;
+                if (!isInstallCounter) {
+                    try {
+                        const rawCurrent = localStorage.getItem(cacheKey);
+                        const rawLegacy = localStorage.getItem(legacyCacheKey);
+                        for (const raw of [rawCurrent, rawLegacy]) {
+                            if (raw === null || String(raw).trim() === "") continue;
+                            const candidate = Number(raw);
+                            if (Number.isFinite(candidate) && candidate > 0) {
+                                known = known === null ? candidate : Math.max(known, candidate);
+                            }
+                        }
+                    } catch (_) {}
+                }
+                const safeViews = known !== null ? Math.max(views, known) : views;
+                try {
+                    if (isInstallCounter || safeViews > 0) localStorage.setItem(cacheKey, String(safeViews));
+                } catch (_) {}
+                return safeViews;
             } catch (error) {
                 lastError = error;
                 if (error && error.status === 429) break;
@@ -6678,10 +6740,20 @@ home_admin_markup = r"""
         }
 
         try {
-            const rawCached = localStorage.getItem(cacheKey);
-            if (rawCached !== null && rawCached.trim() !== "") {
-                const cached = Number(rawCached);
-                if (Number.isFinite(cached) && cached >= 0) return cached;
+            const candidates = [localStorage.getItem(cacheKey), localStorage.getItem(legacyCacheKey)];
+            let best = null;
+            for (const raw of candidates) {
+                if (raw === null || String(raw).trim() === "") continue;
+                const cached = Number(raw);
+                const valid = isInstallCounter
+                    ? Number.isFinite(cached) && cached >= 0
+                    : Number.isFinite(cached) && cached > 0;
+                if (!valid) continue;
+                best = best === null ? cached : Math.max(best, cached);
+            }
+            if (best !== null) {
+                try { localStorage.setItem(cacheKey, String(best)); } catch (_) {}
+                return best;
             }
         } catch (_) {}
 
