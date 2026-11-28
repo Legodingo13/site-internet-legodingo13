@@ -61,15 +61,6 @@ PAGEVIEWS_BASE_PATH = "/serveur-discord-legodingo13"
 PAGEVIEWS_INSTALL_PATH = PAGEVIEWS_BASE_PATH + "/__shortcut_installations__"
 PAGEVIEWS_API_BASE = "https://page-views-api.ratneshc.com/api/v1"
 
-# Valeurs minimales connues et confirmées.
-# Elles servent uniquement de filet de sécurité commun entre appareils :
-# le compteur réseau peut toujours les dépasser, mais le site ne redescend
-# jamais artificiellement en dessous de ces valeurs à cause d'un cache local
-# ancien ou d'une réponse temporaire invalide.
-PAGEVIEWS_KNOWN_MINIMUMS = {
-    PAGEVIEWS_BASE_PATH + "/": 828,
-}
-
 # Cache en mémoire pendant la génération : évite de relire plusieurs fois le même compteur.
 _PAGEVIEWS_BUILD_CACHE = {}
 
@@ -116,13 +107,13 @@ def get_pageview_fallback(path):
     """
     Lit le compteur au moment de la génération du site, sans incrémenter les vues.
 
-    La valeur est intégrée directement dans le HTML comme valeur de secours. Ainsi,
-    si l'API Page Views est momentanément indisponible dans le navigateur d'un
-    visiteur, le pied de page continue d'afficher le dernier total obtenu lors du
-    dernier déploiement GitHub Actions.
+    Cette valeur n'est qu'un secours initial commun à tous les visiteurs. Elle ne
+    constitue jamais un minimum : dès que le navigateur obtient une réponse valide
+    de l'API, la valeur réseau remplace immédiatement cette valeur de build, même si
+    elle est plus basse.
 
     La clé historique PAGEVIEWS_BASE_PATH reste volontairement inchangée pour
-    préserver tous les compteurs existants.
+    continuer à lire et incrémenter les compteurs historiques existants.
     """
     cache_key = str(path or "").strip()
     if not cache_key:
@@ -130,7 +121,7 @@ def get_pageview_fallback(path):
     if cache_key in _PAGEVIEWS_BUILD_CACHE:
         return _PAGEVIEWS_BUILD_CACHE[cache_key]
 
-    # Permet de désactiver ce petit accès réseau pendant un test local si nécessaire.
+    # Permet de désactiver cet accès réseau pendant un test local si nécessaire.
     if str(os.environ.get("DISABLE_PAGEVIEWS_BUILD_FETCH", "")).strip().lower() in {"1", "true", "yes", "on"}:
         _PAGEVIEWS_BUILD_CACHE[cache_key] = None
         return None
@@ -142,33 +133,26 @@ def get_pageview_fallback(path):
     request = urllib.request.Request(
         f"{PAGEVIEWS_API_BASE}/views?{query}",
         headers={
-            "User-Agent": "Legodingo13-Site-Builder/1.0",
+            "User-Agent": "Legodingo13-Site-Builder/2.0",
             "Accept": "application/json",
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache",
         },
     )
 
     try:
-        with urllib.request.urlopen(request, timeout=4) as response:
+        with urllib.request.urlopen(request, timeout=6) as response:
             payload = json.loads(response.read().decode("utf-8"))
         value = int(payload.get("views"))
         if value < 0:
             raise ValueError("Compteur négatif")
-        minimum = PAGEVIEWS_KNOWN_MINIMUMS.get(cache_key)
-        if minimum is not None:
-            value = max(value, int(minimum))
         _PAGEVIEWS_BUILD_CACHE[cache_key] = value
         return value
     except Exception as exc:
         # La génération du site ne doit jamais échouer à cause du service de vues.
         print(f"Page Views : impossible de lire {cache_key!r} pendant le build : {exc}")
-        minimum = PAGEVIEWS_KNOWN_MINIMUMS.get(cache_key)
-        if minimum is not None:
-            minimum = int(minimum)
-            _PAGEVIEWS_BUILD_CACHE[cache_key] = minimum
-            return minimum
         _PAGEVIEWS_BUILD_CACHE[cache_key] = None
         return None
-
 
 def read_previous_youtube_count():
     if not os.path.exists("last-update.txt"):
@@ -3254,31 +3238,27 @@ SCRIPT = r"""
 
     const base = "https://page-views-api.ratneshc.com/api/v1";
     const query = `site=${encodeURIComponent(site)}&path=${encodeURIComponent(path)}`;
-    const cacheKey = `legodingo13:pageviews:v3:${site}:${path}`;
-    const legacyCacheKey = `legodingo13:pageviews:v2:${site}:${path}`;
+    // v4 repart sur un cache propre : les anciennes valeurs v2/v3 qui ont pu
+    // servir de plancher ne sont volontairement pas migrées.
+    const cacheKey = `legodingo13:pageviews:v4:${site}:${path}`;
     const formatter = new Intl.NumberFormat("fr-FR");
+    const debug = new URLSearchParams(window.location.search).get("debugviews") === "1";
 
-    function parsePositiveCounter(raw) {
+    function logDebug(...args) {
+        if (debug) console.info("[Legodingo13 PageViews]", ...args);
+    }
+
+    function parseCounter(raw) {
         if (raw === null || raw === undefined) return null;
         const clean = String(raw).trim();
         if (!clean) return null;
         const value = Number(clean);
-        return Number.isFinite(value) && value > 0 ? value : null;
+        return Number.isFinite(value) && value >= 0 ? value : null;
     }
 
     function readLocalCache() {
         try {
-            const current = parsePositiveCounter(localStorage.getItem(cacheKey));
-            if (current !== null) return current;
-
-            // Migration unique de l'ancien cache : seuls les nombres strictement
-            // positifs sont repris. Les anciens faux 0 sont donc ignorés.
-            const legacy = parsePositiveCounter(localStorage.getItem(legacyCacheKey));
-            if (legacy !== null) {
-                localStorage.setItem(cacheKey, String(legacy));
-                return legacy;
-            }
-            return null;
+            return parseCounter(localStorage.getItem(cacheKey));
         } catch (_) {
             return null;
         }
@@ -3286,7 +3266,7 @@ SCRIPT = r"""
 
     function writeLocalCache(value) {
         const parsed = Number(value);
-        if (!Number.isFinite(parsed) || parsed <= 0) return;
+        if (!Number.isFinite(parsed) || parsed < 0) return;
         try {
             localStorage.setItem(cacheKey, String(parsed));
         } catch (_) {
@@ -3300,16 +3280,17 @@ SCRIPT = r"""
         number.textContent = formatter.format(views);
         counter.dataset.viewSource = source || "network";
         counter.title = `${number.textContent} vue${views > 1 ? "s" : ""} de cette page`;
+        logDebug("Affichage", { views, source: source || "network", path });
         return true;
     }
 
-    const cached = readLocalCache();
-    const initialValues = [embeddedFallback, cached].filter(value => Number.isFinite(value) && value > 0);
-    const baseline = initialValues.length ? Math.max(...initialValues) : null;
-    if (baseline !== null) {
-        // Un compteur de pages ne doit jamais reculer. On conserve donc le meilleur
-        // minimum commun/build/cache en attendant la lecture réseau.
-        displayViews(baseline, embeddedFallback === baseline ? "build" : "cache");
+    // Valeur initiale uniquement : priorité au dernier build commun, puis au cache
+    // local v4. Aucune de ces valeurs ne pourra bloquer une réponse réseau ultérieure.
+    const localFallback = readLocalCache();
+    if (Number.isFinite(embeddedFallback) && embeddedFallback >= 0) {
+        displayViews(embeddedFallback, "build");
+    } else if (localFallback !== null) {
+        displayViews(localFallback, "cache");
     } else {
         number.textContent = "…";
         counter.title = "Chargement du nombre de vues…";
@@ -3326,6 +3307,7 @@ SCRIPT = r"""
             return await fetch(url, {
                 method: "GET",
                 cache: "no-store",
+                credentials: "omit",
                 keepalive: true,
                 signal: controller ? controller.signal : undefined
             });
@@ -3335,20 +3317,24 @@ SCRIPT = r"""
     }
 
     async function trackVisit() {
-        /*
-           IMPORTANT : l'échec du suivi d'une visite ne bloque plus la lecture
-           du compteur. C'était le principal point fragile de l'ancienne version.
-        */
         try {
-            const response = await fetchWithTimeout(`${base}/track?${query}`, 5000);
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const response = await fetchWithTimeout(`${base}/track?${query}`, 7000);
+            logDebug("/track", response.status);
+            if (!response.ok) {
+                const error = new Error(`HTTP ${response.status}`);
+                error.status = response.status;
+                throw error;
+            }
+            return true;
         } catch (error) {
-            console.warn("Suivi de visite indisponible, affichage du compteur maintenu :", error);
+            console.warn("Suivi de visite indisponible, lecture du compteur quand même tentée :", error);
+            return false;
         }
     }
 
     async function readViewsOnce() {
-        const response = await fetchWithTimeout(`${base}/views?${query}`, 6000);
+        const response = await fetchWithTimeout(`${base}/views?${query}`, 7000);
+        logDebug("/views", response.status);
         if (!response.ok) {
             const error = new Error(`HTTP ${response.status}`);
             error.status = response.status;
@@ -3362,38 +3348,42 @@ SCRIPT = r"""
 
     async function refreshViews() {
         let lastError = null;
-        const delays = [0, 900, 2500];
+        const delays = [0, 1000, 3000];
 
         for (const delay of delays) {
             if (delay) await sleep(delay);
             try {
                 const views = await readViewsOnce();
-                // Le réseau reste la source prioritaire, mais on refuse toute régression
-                // sous une valeur positive déjà connue (ex. ancien faux 0 / réponse transitoire).
-                const safeViews = baseline !== null ? Math.max(views, baseline) : views;
-                if (safeViews > 0) writeLocalCache(safeViews);
-                displayViews(safeViews, "network");
-                return;
+                // IMPORTANT : une réponse réseau valide est la source de vérité.
+                // On ne fait plus Math.max() avec une ancienne valeur de cache/build.
+                writeLocalCache(views);
+                displayViews(views, "network");
+                return true;
             } catch (error) {
                 lastError = error;
-                // Le service demande d'attendre 60 s après un 429 : inutile de le marteler immédiatement.
                 if (error && error.status === 429) break;
             }
         }
 
         console.warn("Lecture du compteur temporairement indisponible :", lastError);
-        // On conserve volontairement la valeur de build/cache déjà affichée.
+        // Le build/cache n'est utilisé qu'en secours quand le réseau est indisponible.
         if (number.textContent === "…") {
             number.textContent = "—";
             counter.title = "Compteur de vues temporairement indisponible";
         } else {
             counter.title += " (dernière valeur connue)";
         }
+        return false;
     }
 
-    // Les deux opérations sont indépendantes : aucune panne de /track ne peut masquer /views.
-    trackVisit();
-    refreshViews();
+    async function updateCounter() {
+        // On attend la tentative d'incrémentation avant de lire le total afin que
+        // la visite courante puisse apparaître immédiatement lorsqu'elle est éligible.
+        await trackVisit();
+        await refreshViews();
+    }
+
+    updateCounter();
 })();
 
 (function () {
@@ -6438,7 +6428,7 @@ manifest = {
 with open("_site/manifest.webmanifest", "w", encoding="utf-8") as f:
     json.dump(manifest, f, ensure_ascii=False, indent=2)
 
-service_worker = """const CACHE_NAME = "legodingo13-pwa-v2";
+service_worker = """const CACHE_NAME = "legodingo13-pwa-v3";
 const APP_SHELL = [
     "./",
     "./index.html",
@@ -6471,11 +6461,21 @@ self.addEventListener("activate", event => {
 self.addEventListener("fetch", event => {
     if (event.request.method !== "GET") return;
 
+    const requestUrl = new URL(event.request.url);
+
+    // CRITIQUE : ne jamais intercepter ni mettre en cache une API externe.
+    // Les appels Page Views restent donc totalement hors du cache PWA.
+    if (requestUrl.origin !== self.location.origin) return;
+
     event.respondWith(
         fetch(event.request)
             .then(response => {
-                const copy = response.clone();
-                caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy)).catch(() => {});
+                if (response && response.ok) {
+                    const copy = response.clone();
+                    caches.open(CACHE_NAME)
+                        .then(cache => cache.put(event.request, copy))
+                        .catch(() => {});
+                }
                 return response;
             })
             .catch(() => caches.match(event.request))
@@ -6689,21 +6689,21 @@ home_admin_markup = r"""
         if (!site || !path) throw new Error("Compteur non configuré");
         const base = "https://page-views-api.ratneshc.com/api/v1";
         const query = `site=${encodeURIComponent(site)}&path=${encodeURIComponent(path)}`;
-        const cacheKey = `legodingo13:pageviews:v3:${site}:${path}`;
-        const legacyCacheKey = `legodingo13:pageviews:v2:${site}:${path}`;
+        const cacheKey = `legodingo13:pageviews:v4:${site}:${path}`;
         const isInstallCounter = path === statsModal.dataset.installPath;
         let lastError = null;
 
-        for (const delay of [0, 900, 2500]) {
+        for (const delay of [0, 1000, 3000]) {
             if (delay) await new Promise(resolve => setTimeout(resolve, delay));
             try {
                 const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
-                const timeout = controller ? setTimeout(() => controller.abort(), 6000) : null;
+                const timeout = controller ? setTimeout(() => controller.abort(), 7000) : null;
                 let response;
                 try {
                     response = await fetch(`${base}/views?${query}`, {
                         method: "GET",
                         cache: "no-store",
+                        credentials: "omit",
                         signal: controller ? controller.signal : undefined
                     });
                 } finally {
@@ -6717,49 +6717,26 @@ home_admin_markup = r"""
                 const data = await response.json();
                 const views = Number(data.views);
                 if (!Number.isFinite(views) || views < 0) throw new Error("Valeur de compteur invalide");
-                // Pour les pages, un ancien minimum positif en cache ne doit jamais
-                // être écrasé par un 0 transitoire. Le compteur d'installation, lui,
-                // peut légitimement être à 0.
-                let known = null;
-                if (!isInstallCounter) {
-                    try {
-                        const rawCurrent = localStorage.getItem(cacheKey);
-                        const rawLegacy = localStorage.getItem(legacyCacheKey);
-                        for (const raw of [rawCurrent, rawLegacy]) {
-                            if (raw === null || String(raw).trim() === "") continue;
-                            const candidate = Number(raw);
-                            if (Number.isFinite(candidate) && candidate > 0) {
-                                known = known === null ? candidate : Math.max(known, candidate);
-                            }
-                        }
-                    } catch (_) {}
-                }
-                const safeViews = known !== null ? Math.max(views, known) : views;
-                try {
-                    if (isInstallCounter || safeViews > 0) localStorage.setItem(cacheKey, String(safeViews));
-                } catch (_) {}
-                return safeViews;
+
+                // La réponse réseau valide remplace toujours le cache, même si elle
+                // est inférieure à une ancienne valeur locale.
+                try { localStorage.setItem(cacheKey, String(views)); } catch (_) {}
+                return views;
             } catch (error) {
                 lastError = error;
                 if (error && error.status === 429) break;
             }
         }
 
+        // Secours uniquement si l'API est indisponible : cache v4 de ce navigateur.
         try {
-            const candidates = [localStorage.getItem(cacheKey), localStorage.getItem(legacyCacheKey)];
-            let best = null;
-            for (const raw of candidates) {
-                if (raw === null || String(raw).trim() === "") continue;
+            const raw = localStorage.getItem(cacheKey);
+            if (raw !== null && String(raw).trim() !== "") {
                 const cached = Number(raw);
                 const valid = isInstallCounter
                     ? Number.isFinite(cached) && cached >= 0
-                    : Number.isFinite(cached) && cached > 0;
-                if (!valid) continue;
-                best = best === null ? cached : Math.max(best, cached);
-            }
-            if (best !== null) {
-                try { localStorage.setItem(cacheKey, String(best)); } catch (_) {}
-                return best;
+                    : Number.isFinite(cached) && cached >= 0;
+                if (valid) return cached;
             }
         } catch (_) {}
 
